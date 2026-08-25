@@ -19,11 +19,14 @@ const NEST_LIMIT = 64;
 /** The fraction of the cross axis a drawn box must span to expand. */
 const FILL_RATIO = 0.8;
 
+/** The smallest a box may be resized to. */
+const MINIMUM_SIZE = 1;
+
+/** How thick a box's policy edges are painted. */
+const EDGE = 3;
+
 /** How close to an edge the cursor must be to resize a box. */
 const RESIZE_MARGIN = 8;
-
-/** The smallest a box may be resized to. */
-const MINIMUM_SIZE = 8;
 
 /** How far the delete control sits inside a box's corner. */
 const DELETE_INSET = 10;
@@ -223,7 +226,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return LayoutCanvas.STYLE.aligned;
     })();
-    const fill = LayoutCanvas.fillFor(node);
+    const paint = LayoutCanvas.paintFor(node);
     const cursor = (() => {
       const edge = this.state.edge ?? this.state.hover;
       if(edge === null || edge.node !== node) {
@@ -236,11 +239,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           ref={element => this.register(node, element)}
           style={{...LayoutCanvas.STYLE.box,
             ...LayoutCanvas.toFlex(node, orientation),
-            borderLeftColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
-            borderRightColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
-            borderTopColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-            borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-            ...selection, ...phantom, ...fill, ...alignment, ...cursor}}>
+            ...selection, ...phantom, ...paint, ...alignment, ...cursor}}>
         {label !== '' &&
           <span style={{...LayoutCanvas.STYLE.label,
             ...LayoutCanvas.inkFor(node)}}>{label}</span>}
@@ -428,11 +427,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         top: `${this.state.current.y - this.state.grab.y}px`,
         width: `${Math.min(this.state.size.width, CARRIED_LIMIT.width)}px`,
         height: `${Math.min(this.state.size.height, CARRIED_LIMIT.height)}px`,
-        borderLeftColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
-        borderRightColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
-        borderTopColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-        borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-        ...LayoutCanvas.fillFor(node)}}>
+        ...LayoutCanvas.paintFor(node)}}>
         {label !== '' &&
           <span style={{...LayoutCanvas.STYLE.label,
             ...LayoutCanvas.inkFor(node)}}>{label}</span>}
@@ -536,18 +531,30 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return 'nesw-resize';
   }
 
-  private static fillFor(node: Node) {
-    if(node.widthPolicy !== node.heightPolicy) {
-      return {};
+  private static paintFor(node: Node) {
+    const same = node.widthPolicy === node.heightPolicy;
+    const across = (() => {
+      if(same) {
+        return LayoutCanvas.POLICY_EDGE[node.widthPolicy];
+      }
+      return LayoutCanvas.POLICY_COLOR[node.widthPolicy];
+    })();
+    const down = (() => {
+      if(same) {
+        return LayoutCanvas.POLICY_EDGE[node.heightPolicy];
+      }
+      return LayoutCanvas.POLICY_COLOR[node.heightPolicy];
+    })();
+    const boxShadow = `inset ${EDGE}px 0 0 0 ${across}, ` +
+      `inset -${EDGE}px 0 0 0 ${across}, ` +
+      `inset 0 ${EDGE}px 0 0 ${down}, ` +
+      `inset 0 -${EDGE}px 0 0 ${down}`;
+    if(!same) {
+      return {boxShadow};
     }
-    const color = LayoutCanvas.POLICY_COLOR[node.widthPolicy];
-    const edge = LayoutCanvas.POLICY_EDGE[node.widthPolicy];
     return {
-      backgroundColor: color,
-      borderLeftColor: edge,
-      borderRightColor: edge,
-      borderTopColor: edge,
-      borderBottomColor: edge
+      boxShadow,
+      backgroundColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy]
     };
   }
 
@@ -1029,12 +1036,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '0 8px',
       minWidth: 0,
       minHeight: 0,
       overflow: 'hidden' as 'hidden',
-      borderStyle: 'solid' as 'solid',
-      borderWidth: '3px',
       backgroundColor: '#FAFAFA',
       cursor: 'move',
       fontSize: '12px'
@@ -1063,9 +1067,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       cursor: 'pointer'
     },
     phantom: {
-      borderStyle: 'dashed' as 'dashed',
-      backgroundColor: '#F0ECFF',
-      opacity: 0.7
+      outline: '2px dashed #684BC7',
+      outlineOffset: '-2px',
+      opacity: 0.6
     },
     label: {
       fontWeight: 700,
@@ -1105,12 +1109,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '0 8px',
       overflow: 'hidden' as 'hidden',
-      borderStyle: 'solid' as 'solid',
-      borderWidth: '3px',
       backgroundColor: '#FFFFFF',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
       opacity: 0.9,
       fontSize: '12px',
       pointerEvents: 'none' as 'none'

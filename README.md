@@ -107,7 +107,8 @@ grows with its contents and never falls below a floor, so a blank one still
 has room to draw into. Drag on empty space to draw a box, drag an existing box
 and it follows the cursor while the layout reflows live around a phantom of
 it, and drag a box's border to resize it, or a corner to resize both axes at
-once.
+once, down to a single pixel; a box you want gone is deleted rather than
+collapsed.
 While a box is moved or resized, any edge of it that lines up with an edge of
 another box draws a red line across the canvas along that edge, and every box
 that line touches is tinted and outlined so it is clear which boxes the line
