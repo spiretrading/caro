@@ -81,6 +81,11 @@ not inherit. This differs from component scenarios, which accumulate.
 
 ## Status
 
-The model, the file format, the legacy importer and local load and save are
-in place. The editing canvas is not: the app currently displays a
-specification as an outline rather than letting you draw one.
+The model, the file format, the legacy importer and local load and save are in
+place, along with a first slice of the canvas: drag on the canvas to draw a
+box, then name it and set each axis to fixed or expanding.
+
+The snap resolver is not built yet. A drawn box is inserted into the root
+container at the position matching where the drag began; it does not split an
+existing box, generate spacers for the gaps, or create nested rows and
+columns.
