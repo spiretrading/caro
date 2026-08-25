@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { BoardView } from './board_view';
-import { contains, detach, NodeProperties, normalize,
-  ScenarioBoard } from './editor';
+import { contains, detach, ensureBlank, makeBlank, NodeProperties,
+  normalize, prune, ScenarioBoard } from './editor';
 import { Board, Component, Container, Layout, Node, Orientation,
   SizePolicy } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
@@ -126,7 +126,7 @@ export class Application extends React.Component<{}, State> {
       return (
         <ScenarioBoard component={this.state.component}
           selection={this.state.selection} onSelect={this.onSelect}
-          onChange={this.onChange} onAdd={this.onAdd}
+          onChange={this.onChange}
           onRemoveScenario={this.onRemoveScenario}
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
           onCondition={this.onCondition}/>);
@@ -156,13 +156,9 @@ export class Application extends React.Component<{}, State> {
   }
 
   private static createBoard(): Board {
-    return new Board('Untitled', [new Component('Main',
-      [new Layout('', '', Application.createRoot(), [])])]);
-  }
-
-  private static createRoot(): Container {
-    return new Container(Orientation.COLUMN, 0, 0, SizePolicy.FILL,
-      SizePolicy.FILL, []);
+    const component = new Component('Main', [makeBlank()]);
+    ensureBlank(component);
+    return new Board('Untitled', [component]);
   }
 
   private onOpen = async () => {
@@ -215,15 +211,9 @@ export class Application extends React.Component<{}, State> {
       this.setState({component: null, selection: null});
       return;
     }
-    this.setState({
-      component: this.state.board.components[index], selection: null});
-  }
-
-  private onAdd = () => {
-    this.state.component.layouts.push(new Layout('', '',
-      Application.createRoot(), []));
-    this.setState({
-      revision: this.state.revision + 1, status: 'Added a scenario.'});
+    const component = this.state.board.components[index];
+    ensureBlank(component);
+    this.setState({component, selection: null});
   }
 
   private onRemoveScenario = (layout: Layout) => {
@@ -254,6 +244,7 @@ export class Application extends React.Component<{}, State> {
 
   private onCondition = (layout: Layout, condition: string) => {
     layout.condition = condition;
+    ensureBlank(this.state.component);
     this.setState({revision: this.state.revision + 1});
   }
 
@@ -265,6 +256,7 @@ export class Application extends React.Component<{}, State> {
     for(const layout of this.state.component.layouts) {
       normalize(layout.root);
     }
+    ensureBlank(this.state.component);
     this.setState({revision: this.state.revision + 1});
   }
 
@@ -299,7 +291,8 @@ export class Application extends React.Component<{}, State> {
       return;
     }
     try {
-      await this.state.directory.write(path, this.state.board.toJson());
+      await this.state.directory.write(path,
+        prune(this.state.board).toJson());
       const paths = await this.state.directory.list();
       this.setState({path, paths, status: `Saved ${path}.`});
     } catch(error) {

@@ -101,14 +101,33 @@ different to a web target than to a Qt one, and the condition is a field on
 the scenario rather than a label floating beside it, which is what made them
 losable in XD.
 
-Scenarios are independent. Adding one gives a blank layout, only one is ever
-laid out at a time, and editing one never touches another. A scenario's canvas
+A blank scenario always waits past the default, from the moment a
+specification is started. Drawing into it or naming its condition puts another
+blank beside it, so there is no button to press and
+no empty scenario to clean up. The waiting blank cannot be moved or deleted,
+and it is dropped when the specification is written out: carrying no
+condition, a saved blank would match everything and, sitting last, would take
+precedence over every scenario before it.
+
+Scenarios are independent. Only one is ever laid out at a time, and editing
+one never touches another. A scenario's canvas
 grows with its contents and never falls below a floor, so a blank one still
 has room to draw into. Drag on empty space to draw a box, drag an existing box
 and it follows the cursor while the layout reflows live around a phantom of
-it, and drag a box's border to resize it, or a corner to resize both axes at
-once, down to a single pixel; a box you want gone is deleted rather than
-collapsed.
+it, and drag a box's edge to resize it, or a corner to resize both axes at once, down
+to a single pixel; a box you want gone is deleted rather than collapsed.
+
+The boundary between two boxes belongs to both of them, so dragging it is a
+splitter: one box grows by exactly what the other gives up and the total is
+unchanged, clamping when either reaches a pixel. Because both sizes are
+computed from the extents captured when the drag began, dragging past the
+clamp and back restores them exactly. Only the outer edges of a stack resize
+a box on their own, and they grow the container with it. An edge with nothing
+across it offers no handle at all rather than a control that silently moves
+the opposite edge: the leading edge of a first child, every cross-axis leading
+edge, and any boundary against a container, whose size is derived from its
+contents and would be overwritten. A resize never changes a policy; size and
+policy are independent.
 While a box is moved or resized, any edge of it that lines up with an edge of
 another box draws a red line across the canvas along that edge, and every box
 that line touches is tinted and outlined so it is clear which boxes the line

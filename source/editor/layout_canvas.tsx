@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { Container, Layout, Node, Orientation, Reference,
   SizePolicy } from '../layout';
-import { attach, detach, isPlaced, leaves, normalize, parentOf,
-  Side } from './tree';
+import { attach, detach, isPlaced, leaves, normalize, parentOf, Side,
+  toOrientation } from './tree';
 
 /** The distance a press must cover before it draws or drags. */
 const DRAG_THRESHOLD = 4;
@@ -88,10 +88,19 @@ interface Properties {
   onRemove?: () => void;
 }
 
+/** A boundary a resize acts on: the box before it, and the box after it. */
+interface Grip {
+  side: Side;
+  before: Node;
+  after: Node;
+  beforeExtent: number;
+  afterExtent: number;
+}
+
 interface Edge {
   node: Node;
-  horizontal: Side;
-  vertical: Side;
+  horizontal: Grip;
+  vertical: Grip;
 }
 
 interface State {
@@ -104,7 +113,6 @@ interface State {
   drop: Drop;
   hover: Edge;
   edge: Edge;
-  extent: {width: number, height: number};
   guides: Guide[];
   aligned: Node[];
 }
@@ -123,7 +131,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       drop: null,
       hover: null,
       edge: null,
-      extent: null,
       guides: [],
       aligned: []
     };
@@ -229,7 +236,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const paint = LayoutCanvas.paintFor(node);
     const cursor = (() => {
       const edge = this.state.edge ?? this.state.hover;
-      if(edge === null || edge.node !== node) {
+      if(edge === null || !LayoutCanvas.involves(edge, node)) {
         return {};
       }
       return {cursor: LayoutCanvas.cursorFor(edge)};
@@ -291,32 +298,32 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     if(gesture === Gesture.DRAG && !this.isActive()) {
       return LayoutCanvas.NOTHING;
     }
-    const node = (() => {
-      if(gesture === Gesture.DRAG) {
-        return this.state.carried;
-      }
-      return this.state.edge.node;
-    })();
-    const element = this.elements.get(node);
-    if(element === undefined) {
-      return LayoutCanvas.NOTHING;
-    }
-    const rect = element.getBoundingClientRect();
+    const moving = [] as Node[];
     const verticals = [] as number[];
     const horizontals = [] as number[];
     if(gesture === Gesture.DRAG) {
+      const element = this.elements.get(this.state.carried);
+      if(element === undefined) {
+        return LayoutCanvas.NOTHING;
+      }
+      const rect = element.getBoundingClientRect();
+      moving.push(this.state.carried);
       verticals.push(rect.left, rect.right);
       horizontals.push(rect.top, rect.bottom);
     } else {
       const edge = this.state.edge;
-      if(edge.horizontal === Side.LEFT) {
-        verticals.push(rect.left);
-      } else if(edge.horizontal === Side.RIGHT) {
+      if(edge.horizontal !== null) {
+        const rect = this.boundaryOf(edge.horizontal, moving);
+        if(rect === null) {
+          return LayoutCanvas.NOTHING;
+        }
         verticals.push(rect.right);
       }
-      if(edge.vertical === Side.TOP) {
-        horizontals.push(rect.top);
-      } else if(edge.vertical === Side.BOTTOM) {
+      if(edge.vertical !== null) {
+        const rect = this.boundaryOf(edge.vertical, moving);
+        if(rect === null) {
+          return LayoutCanvas.NOTHING;
+        }
         horizontals.push(rect.bottom);
       }
     }
@@ -324,7 +331,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const aligned = [] as Node[];
     const root = this.props.layout.root as Container;
     for(const other of leaves(root)) {
-      if(other === node) {
+      if(moving.indexOf(other) !== -1) {
         continue;
       }
       const sibling = this.elements.get(other);
@@ -341,9 +348,23 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
     }
     if(aligned.length > 0) {
-      aligned.push(node);
+      aligned.push(...moving);
     }
     return {guides, aligned};
+  }
+
+  private boundaryOf(grip: Grip, moving: Node[]): DOMRect {
+    if(moving.indexOf(grip.before) === -1) {
+      moving.push(grip.before);
+    }
+    if(grip.after !== null && moving.indexOf(grip.after) === -1) {
+      moving.push(grip.after);
+    }
+    const element = this.elements.get(grip.before);
+    if(element === undefined) {
+      return null;
+    }
+    return element.getBoundingClientRect();
   }
 
   private static collect(guides: Guide[], moving: number[],
@@ -444,17 +465,17 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const down = Math.min(RESIZE_MARGIN, rect.height / 3);
     const horizontal = (() => {
       if(point.x - rect.left <= across) {
-        return Side.LEFT;
+        return this.gripFor(node, Side.LEFT);
       } else if(rect.right - point.x <= across) {
-        return Side.RIGHT;
+        return this.gripFor(node, Side.RIGHT);
       }
       return null;
     })();
     const vertical = (() => {
       if(point.y - rect.top <= down) {
-        return Side.TOP;
+        return this.gripFor(node, Side.TOP);
       } else if(rect.bottom - point.y <= down) {
-        return Side.BOTTOM;
+        return this.gripFor(node, Side.BOTTOM);
       }
       return null;
     })();
@@ -462,6 +483,65 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return null;
     }
     return {node, horizontal, vertical};
+  }
+
+  private gripFor(node: Node, side: Side): Grip {
+    const root = this.props.layout.root as Container;
+    const parent = parentOf(root, node);
+    if(parent === null) {
+      return null;
+    }
+    const leading = side === Side.TOP || side === Side.LEFT;
+    if(parent.orientation !== toOrientation(side)) {
+      if(leading) {
+        return null;
+      }
+      return this.gripOf(side, node, null);
+    }
+    const index = parent.children.indexOf(node);
+    const partner = (() => {
+      if(leading) {
+        return parent.children[index - 1];
+      }
+      return parent.children[index + 1];
+    })();
+    if(partner === undefined) {
+      if(leading) {
+        return null;
+      }
+      return this.gripOf(side, node, null);
+    }
+    if(partner instanceof Container) {
+      return null;
+    }
+    if(leading) {
+      return this.gripOf(side, partner, node);
+    }
+    return this.gripOf(side, node, partner);
+  }
+
+  private gripOf(side: Side, before: Node, after: Node): Grip {
+    const vertical = side === Side.TOP || side === Side.BOTTOM;
+    const afterExtent = (() => {
+      if(after === null) {
+        return 0;
+      }
+      return this.extentOf(after, vertical);
+    })();
+    return {side, before, after,
+      beforeExtent: this.extentOf(before, vertical), afterExtent};
+  }
+
+  private extentOf(node: Node, vertical: boolean): number {
+    const element = this.elements.get(node);
+    if(element === undefined) {
+      return 0;
+    }
+    const rect = element.getBoundingClientRect();
+    if(vertical) {
+      return rect.height;
+    }
+    return rect.width;
   }
 
   private onHover = (event: React.MouseEvent) => {
@@ -474,8 +554,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return;
     }
     if(edge !== null && hover !== null && edge.node === hover.node &&
-        edge.horizontal === hover.horizontal &&
-        edge.vertical === hover.vertical) {
+        LayoutCanvas.sameGrip(edge.horizontal, hover.horizontal) &&
+        LayoutCanvas.sameGrip(edge.vertical, hover.vertical)) {
       return;
     }
     this.setState({hover: edge});
@@ -489,31 +569,64 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   private resize(point: Point): void {
     const edge = this.state.edge;
-    const extent = this.state.extent;
     if(edge.horizontal !== null) {
-      const delta = (() => {
-        if(edge.horizontal === Side.LEFT) {
-          return this.state.origin.x - point.x;
-        }
-        return point.x - this.state.origin.x;
-      })();
-      edge.node.width = Math.max(MINIMUM_SIZE,
-        Math.round(extent.width + delta));
-      edge.node.widthPolicy = SizePolicy.FIXED;
+      LayoutCanvas.apply(edge.horizontal,
+        point.x - this.state.origin.x, false);
     }
     if(edge.vertical !== null) {
-      const delta = (() => {
-        if(edge.vertical === Side.TOP) {
-          return this.state.origin.y - point.y;
-        }
-        return point.y - this.state.origin.y;
-      })();
-      edge.node.height = Math.max(MINIMUM_SIZE,
-        Math.round(extent.height + delta));
-      edge.node.heightPolicy = SizePolicy.FIXED;
+      LayoutCanvas.apply(edge.vertical, point.y - this.state.origin.y, true);
     }
     normalize(this.props.layout.root);
     this.props.onChange?.();
+  }
+
+  private static apply(grip: Grip, delta: number, vertical: boolean): void {
+    const upper = (() => {
+      if(grip.after === null) {
+        return Infinity;
+      }
+      return grip.afterExtent - MINIMUM_SIZE;
+    })();
+    const shift = Math.min(
+      Math.max(delta, MINIMUM_SIZE - grip.beforeExtent), upper);
+    LayoutCanvas.size(grip.before, vertical,
+      Math.round(grip.beforeExtent + shift));
+    if(grip.after === null) {
+      return;
+    }
+    LayoutCanvas.size(grip.after, vertical,
+      Math.round(grip.afterExtent - shift));
+  }
+
+  private static size(node: Node, vertical: boolean, extent: number): void {
+    const measure = Math.max(MINIMUM_SIZE, extent);
+    if(vertical) {
+      node.height = measure;
+      return;
+    }
+    node.width = measure;
+  }
+
+  private static sameGrip(left: Grip, right: Grip): boolean {
+    if(left === null || right === null) {
+      return left === right;
+    }
+    return left.before === right.before && left.after === right.after;
+  }
+
+  private static involves(edge: Edge, node: Node): boolean {
+    if(edge.node === node) {
+      return true;
+    }
+    for(const grip of [edge.horizontal, edge.vertical]) {
+      if(grip === null) {
+        continue;
+      }
+      if(grip.before === node || grip.after === node) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static cursorFor(edge: Edge): string {
@@ -523,8 +636,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     if(edge.vertical === null) {
       return 'ew-resize';
     }
-    const falling = (edge.horizontal === Side.LEFT) ===
-      (edge.vertical === Side.TOP);
+    const falling = (edge.horizontal.side === Side.LEFT) ===
+      (edge.vertical.side === Side.TOP);
     if(falling) {
       return 'nwse-resize';
     }
@@ -745,10 +858,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     event.preventDefault();
     const edge = this.edgeAt(point);
     if(edge !== null) {
-      const rect = this.elements.get(edge.node).getBoundingClientRect();
       this.setState({
         gesture: Gesture.RESIZE, edge, origin: point, current: point,
-        extent: {width: rect.width, height: rect.height},
         carried: null, grab: null, size: null, drop: null
       });
       this.props.onSelect?.(edge.node);

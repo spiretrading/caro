@@ -16,9 +16,6 @@ interface Properties {
   /** Called whenever a scenario's layout has been modified. */
   onChange?: () => void;
 
-  /** Called to add a blank scenario after the last one. */
-  onAdd?: () => void;
-
   /** Called to remove a scenario. */
   onRemoveScenario?: (layout: Layout) => void;
 
@@ -38,10 +35,6 @@ export class ScenarioBoard extends React.Component<Properties> {
     return (
       <div style={ScenarioBoard.STYLE.surface}>
         {this.props.component.layouts.map(this.renderScenario)}
-        <button style={ScenarioBoard.STYLE.add} title='Add a scenario'
-            onClick={() => this.props.onAdd?.()}>
-          +
-        </button>
       </div>);
   }
 
@@ -70,10 +63,10 @@ export class ScenarioBoard extends React.Component<Properties> {
   }
 
   private renderControls(layout: Layout, index: number): JSX.Element {
-    if(index === 0) {
+    const count = this.props.component.layouts.length;
+    if(index === 0 || index >= count - 1) {
       return null;
     }
-    const count = this.props.component.layouts.length;
     return (
       <div style={ScenarioBoard.STYLE.controls}>
         <button style={ScenarioBoard.STYLE.control} title='Move left'
@@ -82,7 +75,7 @@ export class ScenarioBoard extends React.Component<Properties> {
           {'\u2039'}
         </button>
         <button style={ScenarioBoard.STYLE.control} title='Move right'
-            disabled={index >= count - 1}
+            disabled={index >= count - 2}
             onClick={() => this.props.onMove?.(layout, 1)}>
           {'\u203A'}
         </button>
@@ -144,16 +137,6 @@ export class ScenarioBoard extends React.Component<Properties> {
       fontSize: '13px',
       lineHeight: '13px',
       border: '1px solid #C8C8C8',
-      backgroundColor: '#FFFFFF',
-      cursor: 'pointer'
-    },
-    add: {
-      flexShrink: 0,
-      alignSelf: 'center',
-      width: '40px',
-      height: '40px',
-      fontSize: '20px',
-      border: '1px dashed #C8C8C8',
       backgroundColor: '#FFFFFF',
       cursor: 'pointer'
     }
