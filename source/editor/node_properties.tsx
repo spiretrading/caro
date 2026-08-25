@@ -56,9 +56,8 @@ export class NodeProperties extends React.Component<Properties> {
           {this.renderChoice(
             'Expanding', SizePolicy.FLEXIBLE, policy, onPolicy)}
         </div>
-        {policy === SizePolicy.FIXED &&
-          <input style={NodeProperties.STYLE.input} type='number' min='0'
-            value={size} onChange={onSize}/>}
+        <input style={NodeProperties.STYLE.input} type='number' min='0'
+          value={size} onChange={onSize}/>
       </div>);
   }
 

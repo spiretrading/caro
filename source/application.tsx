@@ -238,6 +238,7 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onChange = () => {
+    normalize(this.state.layout.root);
     this.setState({revision: this.state.revision + 1});
   }
 

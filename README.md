@@ -87,7 +87,9 @@ and it follows the cursor while the layout reflows live around a phantom of
 it, and drag a box's border to resize it, or a corner to resize both axes at
 once.
 While a box is moved or resized, any edge of it that lines up with an edge of
-another box draws a red line across the canvas along that edge. Overlays are
+another box draws a red line across the canvas along that edge, and every box
+that line touches is tinted and outlined so it is clear which boxes the line
+connects. Overlays are
 positioned against the canvas's padding box rather than its bounding
 rectangle, since an absolutely positioned child measures from inside the
 border; measuring from the bounding rectangle draws every overlay a border

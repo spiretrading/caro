@@ -103,6 +103,7 @@ interface State {
   edge: Edge;
   extent: {width: number, height: number};
   guides: Guide[];
+  aligned: Node[];
 }
 
 /** Displays a layout, letting boxes be drawn into it and dragged within it. */
@@ -120,7 +121,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       hover: null,
       edge: null,
       extent: null,
-      guides: []
+      guides: [],
+      aligned: []
     };
     this.elements = new Map<Node, HTMLElement>();
     this.identifiers = new WeakMap<Node, string>();
@@ -155,9 +157,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   public componentDidUpdate(): void {
-    const guides = this.measureGuides();
-    if(!LayoutCanvas.matches(guides, this.state.guides)) {
-      this.setState({guides});
+    const alignment = this.measureGuides();
+    if(!LayoutCanvas.matches(alignment.guides, this.state.guides) ||
+        !LayoutCanvas.same(alignment.aligned, this.state.aligned)) {
+      this.setState({guides: alignment.guides, aligned: alignment.aligned});
     }
   }
 
@@ -214,6 +217,13 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return {};
     })();
+    const alignment = (() => {
+      if(this.state.aligned.indexOf(node) === -1) {
+        return {};
+      }
+      return LayoutCanvas.STYLE.aligned;
+    })();
+    const fill = LayoutCanvas.fillFor(node);
     const cursor = (() => {
       const edge = this.state.edge ?? this.state.hover;
       if(edge === null || edge.node !== node) {
@@ -230,9 +240,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
             borderRightColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
             borderTopColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
             borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-            ...selection, ...phantom, ...cursor}}>
+            ...selection, ...phantom, ...fill, ...alignment, ...cursor}}>
         {label !== '' &&
-          <span style={LayoutCanvas.STYLE.label}>{label}</span>}
+          <span style={{...LayoutCanvas.STYLE.label,
+            ...LayoutCanvas.inkFor(node)}}>{label}</span>}
         {this.renderDelete(node)}
       </div>);
   }
@@ -273,13 +284,13 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         style={{...LayoutCanvas.STYLE.guide, ...style}}/>);
   }
 
-  private measureGuides(): Guide[] {
+  private measureGuides(): {guides: Guide[], aligned: Node[]} {
     const gesture = this.state.gesture;
     if(gesture !== Gesture.DRAG && gesture !== Gesture.RESIZE) {
-      return [];
+      return LayoutCanvas.NOTHING;
     }
     if(gesture === Gesture.DRAG && !this.isActive()) {
-      return [];
+      return LayoutCanvas.NOTHING;
     }
     const node = (() => {
       if(gesture === Gesture.DRAG) {
@@ -289,7 +300,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     })();
     const element = this.elements.get(node);
     if(element === undefined) {
-      return [];
+      return LayoutCanvas.NOTHING;
     }
     const rect = element.getBoundingClientRect();
     const verticals = [] as number[];
@@ -311,6 +322,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
     }
     const guides = [] as Guide[];
+    const aligned = [] as Node[];
     const root = this.props.layout.root as Container;
     for(const other of leaves(root)) {
       if(other === node) {
@@ -321,21 +333,29 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         continue;
       }
       const bounds = sibling.getBoundingClientRect();
-      LayoutCanvas.collect(guides, verticals, [bounds.left, bounds.right],
-        this.inset.x, true);
-      LayoutCanvas.collect(guides, horizontals, [bounds.top, bounds.bottom],
-        this.inset.y, false);
+      const across = LayoutCanvas.collect(guides, verticals,
+        [bounds.left, bounds.right], this.inset.x, true);
+      const down = LayoutCanvas.collect(guides, horizontals,
+        [bounds.top, bounds.bottom], this.inset.y, false);
+      if(across || down) {
+        aligned.push(other);
+      }
     }
-    return guides;
+    if(aligned.length > 0) {
+      aligned.push(node);
+    }
+    return {guides, aligned};
   }
 
   private static collect(guides: Guide[], moving: number[],
-      edges: number[], origin: number, vertical: boolean): void {
+      edges: number[], origin: number, vertical: boolean): boolean {
+    let found = false;
     for(const position of moving) {
       for(const edge of edges) {
         if(Math.abs(position - edge) > ALIGN_TOLERANCE) {
           continue;
         }
+        found = true;
         const offset = edge - origin;
         const known = guides.some(guide => guide.vertical === vertical &&
           Math.abs(guide.offset - offset) <= ALIGN_TOLERANCE);
@@ -344,6 +364,19 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         }
       }
     }
+    return found;
+  }
+
+  private static same(left: Node[], right: Node[]): boolean {
+    if(left.length !== right.length) {
+      return false;
+    }
+    for(let i = 0; i < left.length; ++i) {
+      if(left[i] !== right[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static matches(left: Guide[], right: Guide[]): boolean {
@@ -398,9 +431,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         borderLeftColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
         borderRightColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
         borderTopColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-        borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy]}}>
+        borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
+        ...LayoutCanvas.fillFor(node)}}>
         {label !== '' &&
-          <span style={LayoutCanvas.STYLE.label}>{label}</span>}
+          <span style={{...LayoutCanvas.STYLE.label,
+            ...LayoutCanvas.inkFor(node)}}>{label}</span>}
       </div>);
   }
 
@@ -499,6 +534,28 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return 'nwse-resize';
     }
     return 'nesw-resize';
+  }
+
+  private static fillFor(node: Node) {
+    if(node.widthPolicy !== node.heightPolicy) {
+      return {};
+    }
+    const color = LayoutCanvas.POLICY_COLOR[node.widthPolicy];
+    const edge = LayoutCanvas.POLICY_EDGE[node.widthPolicy];
+    return {
+      backgroundColor: color,
+      borderLeftColor: edge,
+      borderRightColor: edge,
+      borderTopColor: edge,
+      borderBottomColor: edge
+    };
+  }
+
+  private static inkFor(node: Node) {
+    if(node.widthPolicy !== node.heightPolicy) {
+      return {};
+    }
+    return {color: LayoutCanvas.POLICY_INK[node.widthPolicy]};
   }
 
   private static labelOf(node: Node): string {
@@ -904,33 +961,47 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return {policy: node.widthPolicy, size: node.width};
     })();
-    const flex = (() => {
+    const shrink = (() => {
       if(main.policy === SizePolicy.FLEXIBLE) {
-        return '1 1 0';
-      } else if(main.policy === SizePolicy.FIXED) {
-        return `0 0 ${main.size}px`;
+        return 1;
       }
-      return '0 0 auto';
+      return 0;
     })();
-    const crossSize = (() => {
+    const limit = (() => {
       if(cross.policy === SizePolicy.FLEXIBLE) {
         return '100%';
-      } else if(cross.policy === SizePolicy.FIXED) {
-        return `${cross.size}px`;
       }
-      return 'auto';
+      return 'none';
     })();
+    const flex = `0 ${shrink} ${main.size}px`;
     if(orientation === Orientation.ROW) {
-      return {flex, height: crossSize};
+      return {flex, height: `${cross.size}px`, maxHeight: limit};
     }
-    return {flex, width: crossSize};
+    return {flex, width: `${cross.size}px`, maxWidth: limit};
   }
+
+  private static readonly NOTHING = {guides: [] as Guide[],
+    aligned: [] as Node[]};
 
   private static readonly POLICY_COLOR = {
     [SizePolicy.FIXED]: '#FFB800',
     [SizePolicy.FLEXIBLE]: '#0066FF',
     [SizePolicy.COMPONENT]: '#00BF2D',
     [SizePolicy.REPEAT]: '#744BFF'
+  } as {[policy: string]: string};
+
+  private static readonly POLICY_EDGE = {
+    [SizePolicy.FIXED]: '#B28100',
+    [SizePolicy.FLEXIBLE]: '#0047B2',
+    [SizePolicy.COMPONENT]: '#008620',
+    [SizePolicy.REPEAT]: '#5135B2'
+  } as {[policy: string]: string};
+
+  private static readonly POLICY_INK = {
+    [SizePolicy.FIXED]: '#000000',
+    [SizePolicy.FLEXIBLE]: '#FFFFFF',
+    [SizePolicy.COMPONENT]: '#000000',
+    [SizePolicy.REPEAT]: '#FFFFFF'
   } as {[policy: string]: string};
 
   private static readonly STYLE = {
@@ -1021,6 +1092,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       position: 'absolute' as 'absolute',
       backgroundColor: '#684BC7',
       pointerEvents: 'none' as 'none'
+    },
+    aligned: {
+      backgroundColor: '#FBE3E4',
+      outline: '1px solid #E63F44',
+      outlineOffset: '-1px'
     },
     guide: {
       position: 'absolute' as 'absolute',
