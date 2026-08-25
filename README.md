@@ -81,9 +81,11 @@ not inherit. This differs from component scenarios, which accumulate.
 
 ## Status
 
-The app opens on an empty specification, ready to draw. Drag on empty space to
-draw a box, drag an existing box and it follows the cursor while the layout
-reflows live around a phantom of it, and drag a box's border to resize it.
+The app opens on an empty specification, ready to draw, with New, Open and
+Save on the toolbar. Drag on empty space to draw a box, drag an existing box
+and it follows the cursor while the layout reflows live around a phantom of
+it, and drag a box's border to resize it, or a corner to resize both axes at
+once.
 Escape cancels a gesture. A box carries its name centred as `<Name>` and shows
 nothing when unnamed; the properties panel names the selection and sets each of
 its axes to fixed or expanding.

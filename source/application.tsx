@@ -47,19 +47,6 @@ export class Application extends React.Component<{}, State> {
     }
     return (
       <div style={Application.STYLE.container}>
-        <div style={Application.STYLE.sidebar}>
-          <button style={Application.STYLE.button} onClick={this.onOpen}>
-            Open specifications
-          </button>
-          <button style={Application.STYLE.button} onClick={this.onNew}>
-            New specification
-          </button>
-          {this.state.directory !== null &&
-            <div style={Application.STYLE.directoryName}>
-              {this.state.directory.name}
-            </div>}
-          {this.state.paths.map(this.renderPath)}
-        </div>
         <div style={Application.STYLE.content}>
           {this.renderToolbar()}
           {this.renderBody()}
@@ -73,6 +60,22 @@ export class Application extends React.Component<{}, State> {
   private renderToolbar(): JSX.Element {
     return (
       <div style={Application.STYLE.toolbar}>
+        <button style={Application.STYLE.button} onClick={this.onNew}>
+          New
+        </button>
+        <button style={Application.STYLE.button} onClick={this.onOpen}>
+          Open
+        </button>
+        <button style={Application.STYLE.button} onClick={this.onSave}>
+          Save
+        </button>
+        {this.state.paths.length > 0 &&
+          <select style={Application.STYLE.select} value={this.state.path}
+              onChange={this.onPath}>
+            <option value=''>{this.directoryName()}</option>
+            {this.state.paths.map(path =>
+              <option key={path} value={path}>{path}</option>)}
+          </select>}
         {this.state.board !== null &&
           <select style={Application.STYLE.select}
               value={this.componentIndex()} onChange={this.onComponent}>
@@ -89,11 +92,14 @@ export class Application extends React.Component<{}, State> {
               </option>)}
           </select>}
         <span style={Application.STYLE.status}>{this.state.status}</span>
-        {this.state.board !== null &&
-          <button style={Application.STYLE.button} onClick={this.onSave}>
-            Save
-          </button>}
       </div>);
+  }
+
+  private directoryName(): string {
+    if(this.state.directory === null) {
+      return 'Specifications';
+    }
+    return this.state.directory.name;
   }
 
   private renderBody(): JSX.Element {
@@ -109,19 +115,6 @@ export class Application extends React.Component<{}, State> {
       <div style={Application.STYLE.placeholder}>
         Open a directory of specifications, or start a new one.
       </div>);
-  }
-
-  private renderPath = (path: string) => {
-    const style = (() => {
-      if(path === this.state.path) {
-        return {...Application.STYLE.path, ...Application.STYLE.selected};
-      }
-      return Application.STYLE.path;
-    })();
-    return (
-      <button key={path} style={style} onClick={() => this.onSelectPath(path)}>
-        {path}
-      </button>);
   }
 
   private componentIndex(): number {
@@ -164,6 +157,14 @@ export class Application extends React.Component<{}, State> {
     } catch(error) {
       this.setState({status: `${error}`});
     }
+  }
+
+  private onPath = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const path = event.target.value;
+    if(path === '') {
+      return;
+    }
+    await this.onSelectPath(path);
   }
 
   private onSelectPath = async (path: string) => {
@@ -262,17 +263,6 @@ export class Application extends React.Component<{}, State> {
       fontFamily: 'Roboto, Segoe UI, sans-serif',
       backgroundColor: '#F5F5F5'
     },
-    sidebar: {
-      width: '300px',
-      flexShrink: 0,
-      display: 'flex',
-      flexDirection: 'column' as 'column',
-      gap: '4px',
-      padding: '12px',
-      overflowY: 'auto' as 'auto',
-      borderRight: '1px solid #C8C8C8',
-      backgroundColor: '#FFFFFF'
-    },
     content: {
       display: 'flex',
       flexDirection: 'column' as 'column',
@@ -296,22 +286,6 @@ export class Application extends React.Component<{}, State> {
       padding: '8px 12px',
       fontSize: '13px',
       cursor: 'pointer'
-    },
-    directoryName: {
-      fontSize: '12px',
-      fontWeight: 700,
-      padding: '8px 4px'
-    },
-    path: {
-      textAlign: 'left' as 'left',
-      fontSize: '12px',
-      padding: '4px',
-      border: 'none',
-      background: 'none',
-      cursor: 'pointer'
-    },
-    selected: {
-      backgroundColor: '#E6E6E6'
     },
     status: {
       flexGrow: 1,

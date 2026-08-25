@@ -20,7 +20,7 @@ const NEST_LIMIT = 64;
 const FILL_RATIO = 0.8;
 
 /** How close to an edge the cursor must be to resize a box. */
-const RESIZE_MARGIN = 6;
+const RESIZE_MARGIN = 8;
 
 /** The smallest a box may be resized to. */
 const MINIMUM_SIZE = 8;
@@ -70,7 +70,8 @@ interface Properties {
 
 interface Edge {
   node: Node;
-  side: Side;
+  horizontal: Side;
+  vertical: Side;
 }
 
 interface State {
@@ -83,7 +84,7 @@ interface State {
   drop: Drop;
   hover: Edge;
   edge: Edge;
-  extent: number;
+  extent: {width: number, height: number};
 }
 
 /** Displays a layout, letting boxes be drawn into it and dragged within it. */
@@ -100,7 +101,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       drop: null,
       hover: null,
       edge: null,
-      extent: 0
+      extent: null
     };
     this.elements = new Map<Node, HTMLElement>();
     this.identifiers = new WeakMap<Node, string>();
@@ -190,10 +191,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       if(edge === null || edge.node !== node) {
         return {};
       }
-      if(edge.side === Side.LEFT || edge.side === Side.RIGHT) {
-        return {cursor: 'ew-resize'};
-      }
-      return {cursor: 'ns-resize'};
+      return {cursor: LayoutCanvas.cursorFor(edge)};
     })();
     return (
       <div key={this.keyOf(node)}
@@ -261,16 +259,28 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return null;
     }
     const rect = this.elements.get(node).getBoundingClientRect();
-    if(point.x - rect.left <= RESIZE_MARGIN) {
-      return {node, side: Side.LEFT};
-    } else if(rect.right - point.x <= RESIZE_MARGIN) {
-      return {node, side: Side.RIGHT};
-    } else if(point.y - rect.top <= RESIZE_MARGIN) {
-      return {node, side: Side.TOP};
-    } else if(rect.bottom - point.y <= RESIZE_MARGIN) {
-      return {node, side: Side.BOTTOM};
+    const across = Math.min(RESIZE_MARGIN, rect.width / 3);
+    const down = Math.min(RESIZE_MARGIN, rect.height / 3);
+    const horizontal = (() => {
+      if(point.x - rect.left <= across) {
+        return Side.LEFT;
+      } else if(rect.right - point.x <= across) {
+        return Side.RIGHT;
+      }
+      return null;
+    })();
+    const vertical = (() => {
+      if(point.y - rect.top <= down) {
+        return Side.TOP;
+      } else if(rect.bottom - point.y <= down) {
+        return Side.BOTTOM;
+      }
+      return null;
+    })();
+    if(horizontal === null && vertical === null) {
+      return null;
     }
-    return null;
+    return {node, horizontal, vertical};
   }
 
   private onHover = (event: React.MouseEvent) => {
@@ -283,7 +293,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return;
     }
     if(edge !== null && hover !== null && edge.node === hover.node &&
-        edge.side === hover.side) {
+        edge.horizontal === hover.horizontal &&
+        edge.vertical === hover.vertical) {
       return;
     }
     this.setState({hover: edge});
@@ -297,27 +308,46 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   private resize(point: Point): void {
     const edge = this.state.edge;
-    const delta = (() => {
-      if(edge.side === Side.LEFT) {
-        return this.state.origin.x - point.x;
-      } else if(edge.side === Side.RIGHT) {
+    const extent = this.state.extent;
+    if(edge.horizontal !== null) {
+      const delta = (() => {
+        if(edge.horizontal === Side.LEFT) {
+          return this.state.origin.x - point.x;
+        }
         return point.x - this.state.origin.x;
-      } else if(edge.side === Side.TOP) {
-        return this.state.origin.y - point.y;
-      }
-      return point.y - this.state.origin.y;
-    })();
-    const size = Math.max(MINIMUM_SIZE,
-      Math.round(this.state.extent + delta));
-    if(edge.side === Side.LEFT || edge.side === Side.RIGHT) {
-      edge.node.width = size;
+      })();
+      edge.node.width = Math.max(MINIMUM_SIZE,
+        Math.round(extent.width + delta));
       edge.node.widthPolicy = SizePolicy.FIXED;
-    } else {
-      edge.node.height = size;
+    }
+    if(edge.vertical !== null) {
+      const delta = (() => {
+        if(edge.vertical === Side.TOP) {
+          return this.state.origin.y - point.y;
+        }
+        return point.y - this.state.origin.y;
+      })();
+      edge.node.height = Math.max(MINIMUM_SIZE,
+        Math.round(extent.height + delta));
       edge.node.heightPolicy = SizePolicy.FIXED;
     }
     normalize(this.props.layout.root);
     this.props.onChange?.();
+  }
+
+  private static cursorFor(edge: Edge): string {
+    if(edge.horizontal === null) {
+      return 'ns-resize';
+    }
+    if(edge.vertical === null) {
+      return 'ew-resize';
+    }
+    const falling = (edge.horizontal === Side.LEFT) ===
+      (edge.vertical === Side.TOP);
+    if(falling) {
+      return 'nwse-resize';
+    }
+    return 'nesw-resize';
   }
 
   private static labelOf(node: Node): string {
@@ -497,14 +527,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const edge = this.edgeAt(point);
     if(edge !== null) {
       const rect = this.elements.get(edge.node).getBoundingClientRect();
-      const extent = (() => {
-        if(edge.side === Side.LEFT || edge.side === Side.RIGHT) {
-          return rect.width;
-        }
-        return rect.height;
-      })();
       this.setState({
-        gesture: Gesture.RESIZE, edge, extent, origin: point, current: point,
+        gesture: Gesture.RESIZE, edge, origin: point, current: point,
+        extent: {width: rect.width, height: rect.height},
         carried: null, grab: null, size: null, drop: null
       });
       this.props.onSelect?.(edge.node);
