@@ -31,6 +31,9 @@ const DELETE_INSET = 10;
 /** The smallest box that has room for a delete control. */
 const DELETE_ROOM = 44;
 
+/** How far apart two edges may be and still count as aligned. */
+const ALIGN_TOLERANCE = 0.5;
+
 /** The largest the box following the cursor is drawn. */
 const CARRIED_LIMIT = {width: 400, height: 200};
 
@@ -57,6 +60,11 @@ interface Drop {
   target: Node;
   side: Side;
   marker: {left: number, top: number, width: number, height: number};
+}
+
+interface Guide {
+  vertical: boolean;
+  offset: number;
 }
 
 interface Properties {
@@ -94,6 +102,7 @@ interface State {
   hover: Edge;
   edge: Edge;
   extent: {width: number, height: number};
+  guides: Guide[];
 }
 
 /** Displays a layout, letting boxes be drawn into it and dragged within it. */
@@ -110,7 +119,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       drop: null,
       hover: null,
       edge: null,
-      extent: null
+      extent: null,
+      guides: []
     };
     this.elements = new Map<Node, HTMLElement>();
     this.identifiers = new WeakMap<Node, string>();
@@ -136,11 +146,19 @@ export class LayoutCanvas extends React.Component<Properties, State> {
             this.renderNode(child, root.orientation))}
           {this.renderRubberBand()}
           {this.renderMarker()}
+          {this.state.guides.map(this.renderGuide)}
           {root.children.length === 0 &&
             <div style={LayoutCanvas.STYLE.hint}>Drag to draw a box.</div>}
         </div>
         {this.renderCarried()}
       </div>);
+  }
+
+  public componentDidUpdate(): void {
+    const guides = this.measureGuides();
+    if(!LayoutCanvas.matches(guides, this.state.guides)) {
+      this.setState({guides});
+    }
   }
 
   public componentWillUnmount(): void {
@@ -151,6 +169,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private elements: Map<Node, HTMLElement>;
   private snapshot: Node;
   private bounds: DOMRect;
+  private inset: Point;
   private identifiers: WeakMap<Node, string>;
   private count: number;
   private settled: Point;
@@ -242,6 +261,104 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     this.props.onRemove?.();
   }
 
+  private renderGuide = (guide: Guide, index: number) => {
+    const style = (() => {
+      if(guide.vertical) {
+        return {left: `${guide.offset}px`, top: 0, bottom: 0, width: '1px'};
+      }
+      return {top: `${guide.offset}px`, left: 0, right: 0, height: '1px'};
+    })();
+    return (
+      <div key={index}
+        style={{...LayoutCanvas.STYLE.guide, ...style}}/>);
+  }
+
+  private measureGuides(): Guide[] {
+    const gesture = this.state.gesture;
+    if(gesture !== Gesture.DRAG && gesture !== Gesture.RESIZE) {
+      return [];
+    }
+    if(gesture === Gesture.DRAG && !this.isActive()) {
+      return [];
+    }
+    const node = (() => {
+      if(gesture === Gesture.DRAG) {
+        return this.state.carried;
+      }
+      return this.state.edge.node;
+    })();
+    const element = this.elements.get(node);
+    if(element === undefined) {
+      return [];
+    }
+    const rect = element.getBoundingClientRect();
+    const verticals = [] as number[];
+    const horizontals = [] as number[];
+    if(gesture === Gesture.DRAG) {
+      verticals.push(rect.left, rect.right);
+      horizontals.push(rect.top, rect.bottom);
+    } else {
+      const edge = this.state.edge;
+      if(edge.horizontal === Side.LEFT) {
+        verticals.push(rect.left);
+      } else if(edge.horizontal === Side.RIGHT) {
+        verticals.push(rect.right);
+      }
+      if(edge.vertical === Side.TOP) {
+        horizontals.push(rect.top);
+      } else if(edge.vertical === Side.BOTTOM) {
+        horizontals.push(rect.bottom);
+      }
+    }
+    const guides = [] as Guide[];
+    const root = this.props.layout.root as Container;
+    for(const other of leaves(root)) {
+      if(other === node) {
+        continue;
+      }
+      const sibling = this.elements.get(other);
+      if(sibling === undefined) {
+        continue;
+      }
+      const bounds = sibling.getBoundingClientRect();
+      LayoutCanvas.collect(guides, verticals, [bounds.left, bounds.right],
+        this.inset.x, true);
+      LayoutCanvas.collect(guides, horizontals, [bounds.top, bounds.bottom],
+        this.inset.y, false);
+    }
+    return guides;
+  }
+
+  private static collect(guides: Guide[], moving: number[],
+      edges: number[], origin: number, vertical: boolean): void {
+    for(const position of moving) {
+      for(const edge of edges) {
+        if(Math.abs(position - edge) > ALIGN_TOLERANCE) {
+          continue;
+        }
+        const offset = edge - origin;
+        const known = guides.some(guide => guide.vertical === vertical &&
+          Math.abs(guide.offset - offset) <= ALIGN_TOLERANCE);
+        if(!known) {
+          guides.push({vertical, offset});
+        }
+      }
+    }
+  }
+
+  private static matches(left: Guide[], right: Guide[]): boolean {
+    if(left.length !== right.length) {
+      return false;
+    }
+    for(let i = 0; i < left.length; ++i) {
+      if(left[i].vertical !== right[i].vertical ||
+          Math.abs(left[i].offset - right[i].offset) > ALIGN_TOLERANCE) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private renderRubberBand(): JSX.Element {
     if(this.state.gesture !== Gesture.DRAW || !this.isActive()) {
       return null;
@@ -249,8 +366,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const region = this.measure();
     return (
       <div style={{...LayoutCanvas.STYLE.rubberBand,
-        left: `${region.x - this.bounds.left}px`,
-        top: `${region.y - this.bounds.top}px`,
+        left: `${region.x - this.inset.x}px`,
+        top: `${region.y - this.inset.y}px`,
         width: `${region.width}px`, height: `${region.height}px`}}/>);
   }
 
@@ -487,7 +604,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         }
         return rect.right;
       })();
-      return {left: left - this.bounds.left, top: rect.top - this.bounds.top,
+      return {left: left - this.inset.x, top: rect.top - this.inset.y,
         width: 3, height: rect.height};
     }
     const top = (() => {
@@ -496,7 +613,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return rect.bottom;
     })();
-    return {left: rect.left - this.bounds.left, top: top - this.bounds.top,
+    return {left: rect.left - this.inset.x, top: top - this.inset.y,
       width: rect.width, height: 3};
   }
 
@@ -553,6 +670,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private onMouseDown = (event: React.MouseEvent) => {
     const point = {x: event.clientX, y: event.clientY};
     this.bounds = this.container.getBoundingClientRect();
+    this.inset = {
+      x: this.bounds.left + this.container.clientLeft,
+      y: this.bounds.top + this.container.clientTop
+    };
     this.snapshot = this.props.layout.root.clone();
     this.settled = null;
     this.previous = null;
@@ -900,6 +1021,12 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       position: 'absolute' as 'absolute',
       backgroundColor: '#684BC7',
       pointerEvents: 'none' as 'none'
+    },
+    guide: {
+      position: 'absolute' as 'absolute',
+      backgroundColor: '#E63F44',
+      pointerEvents: 'none' as 'none',
+      zIndex: 5
     },
     carried: {
       position: 'fixed' as 'fixed',

@@ -86,7 +86,13 @@ Save on the toolbar. Drag on empty space to draw a box, drag an existing box
 and it follows the cursor while the layout reflows live around a phantom of
 it, and drag a box's border to resize it, or a corner to resize both axes at
 once.
-Escape cancels a gesture. Delete or Backspace removes the selected box, as
+While a box is moved or resized, any edge of it that lines up with an edge of
+another box draws a red line across the canvas along that edge. Overlays are
+positioned against the canvas's padding box rather than its bounding
+rectangle, since an absolutely positioned child measures from inside the
+border; measuring from the bounding rectangle draws every overlay a border
+width off. Escape cancels
+a gesture. Delete or Backspace removes the selected box, as
 does the control on the box itself and the button in the properties panel. A
 box carries its name centred as `<Name>` and shows nothing when unnamed; the
 properties panel names the selection and sets each of its axes to fixed or
