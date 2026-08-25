@@ -59,7 +59,7 @@ export function attach(root: Container, node: Node, target: Node,
     return;
   }
   const orientation = toOrientation(side);
-  const anchor = ascend(root, target, orientation);
+  const anchor = ascend(root, target, orientation, node);
   if(anchor === null) {
     reroot(root, node, orientation, side);
     return;
@@ -94,7 +94,7 @@ export function attach(root: Container, node: Node, target: Node,
 export function isPlaced(root: Container, node: Node, target: Node,
     side: Side): boolean {
   const orientation = toOrientation(side);
-  const anchor = ascend(root, target, orientation);
+  const anchor = ascend(root, target, orientation, node);
   if(anchor === null) {
     return false;
   }
@@ -150,12 +150,21 @@ export function toOrientation(side: Side): Orientation {
   return Orientation.ROW;
 }
 
-function ascend(root: Container, target: Node,
-    orientation: Orientation): Node {
+function absorb(root: Container): void {
+  while(root.children.length === 1 &&
+      root.children[0] instanceof Container) {
+    const child = root.children[0] as Container;
+    root.orientation = child.orientation;
+    root.children = child.children;
+  }
+}
+
+function ascend(root: Container, target: Node, orientation: Orientation,
+    ignore: Node): Node {
   let anchor = target;
   let parent = parentOf(root, anchor);
   while(parent !== null && parent.orientation !== orientation &&
-      spans(parent, anchor, orientation)) {
+      spans(parent, anchor, orientation, ignore)) {
     if(parent === root) {
       return null;
     }
@@ -165,14 +174,41 @@ function ascend(root: Container, target: Node,
   return anchor;
 }
 
-function spans(container: Container, child: Node,
-    orientation: Orientation): boolean {
-  if(orientation === Orientation.ROW) {
-    return child.widthPolicy === SizePolicy.FLEXIBLE ||
-      Math.abs(child.width - container.width) < 1;
+function spans(container: Container, child: Node, orientation: Orientation,
+    ignore: Node): boolean {
+  if(policyOf(child, orientation) === SizePolicy.FLEXIBLE) {
+    return true;
   }
-  return child.heightPolicy === SizePolicy.FLEXIBLE ||
-    Math.abs(child.height - container.height) < 1;
+  let extent = 0;
+  let found = false;
+  for(const sibling of container.children) {
+    if(sibling === ignore) {
+      continue;
+    }
+    if(policyOf(sibling, orientation) === SizePolicy.FLEXIBLE) {
+      return false;
+    }
+    found = true;
+    extent = Math.max(extent, extentOf(sibling, orientation));
+  }
+  if(!found) {
+    return true;
+  }
+  return Math.abs(extentOf(child, orientation) - extent) < 1;
+}
+
+function policyOf(node: Node, orientation: Orientation): SizePolicy {
+  if(orientation === Orientation.ROW) {
+    return node.widthPolicy;
+  }
+  return node.heightPolicy;
+}
+
+function extentOf(node: Node, orientation: Orientation): number {
+  if(orientation === Orientation.ROW) {
+    return node.width;
+  }
+  return node.height;
 }
 
 function reroot(root: Container, node: Node, orientation: Orientation,
@@ -194,6 +230,7 @@ function reroot(root: Container, node: Node, orientation: Orientation,
 
 function collapse(root: Container, container: Container): void {
   if(container === root) {
+    absorb(root);
     return;
   }
   const parent = parentOf(root, container);

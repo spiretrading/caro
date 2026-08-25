@@ -19,6 +19,12 @@ const NEST_LIMIT = 64;
 /** The fraction of the cross axis a drawn box must span to expand. */
 const FILL_RATIO = 0.8;
 
+/** How close to an edge the cursor must be to resize a box. */
+const RESIZE_MARGIN = 6;
+
+/** The smallest a box may be resized to. */
+const MINIMUM_SIZE = 8;
+
 /** The largest the box following the cursor is drawn. */
 const CARRIED_LIMIT = {width: 400, height: 200};
 
@@ -32,7 +38,8 @@ const REVERSAL_DISTANCE = 12;
 enum Gesture {
   NONE,
   DRAW,
-  DRAG
+  DRAG,
+  RESIZE
 }
 
 interface Point {
@@ -61,6 +68,11 @@ interface Properties {
   onChange?: () => void;
 }
 
+interface Edge {
+  node: Node;
+  side: Side;
+}
+
 interface State {
   gesture: Gesture;
   origin: Point;
@@ -69,6 +81,9 @@ interface State {
   grab: Point;
   size: {width: number, height: number};
   drop: Drop;
+  hover: Edge;
+  edge: Edge;
+  extent: number;
 }
 
 /** Displays a layout, letting boxes be drawn into it and dragged within it. */
@@ -82,7 +97,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       carried: null,
       grab: null,
       size: null,
-      drop: null
+      drop: null,
+      hover: null,
+      edge: null,
+      extent: 0
     };
     this.elements = new Map<Node, HTMLElement>();
     this.identifiers = new WeakMap<Node, string>();
@@ -102,7 +120,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         <div ref={element => this.container = element}
             style={{...LayoutCanvas.STYLE.container,
               flexDirection: LayoutCanvas.toDirection(root.orientation)}}
-            onMouseDown={this.onMouseDown}>
+            onMouseDown={this.onMouseDown} onMouseMove={this.onHover}
+            onMouseLeave={this.onLeave}>
           {root.children.map(child =>
             this.renderNode(child, root.orientation))}
           {this.renderRubberBand()}
@@ -153,14 +172,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private renderBox(node: Node, orientation: Orientation): JSX.Element {
-    const label = (() => {
-      if(node instanceof Reference && node.name !== '') {
-        return node.name;
-      } else if(node instanceof Reference) {
-        return '(unnamed)';
-      }
-      return 'spacer';
-    })();
+    const label = LayoutCanvas.labelOf(node);
     const selection = (() => {
       if(node === this.props.selection) {
         return LayoutCanvas.STYLE.selected;
@@ -173,6 +185,16 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return {};
     })();
+    const cursor = (() => {
+      const edge = this.state.edge ?? this.state.hover;
+      if(edge === null || edge.node !== node) {
+        return {};
+      }
+      if(edge.side === Side.LEFT || edge.side === Side.RIGHT) {
+        return {cursor: 'ew-resize'};
+      }
+      return {cursor: 'ns-resize'};
+    })();
     return (
       <div key={this.keyOf(node)}
           ref={element => this.register(node, element)}
@@ -182,11 +204,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
             borderRightColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
             borderTopColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
             borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
-            ...selection, ...phantom}}>
-        <span style={LayoutCanvas.STYLE.label}>{label}</span>
-        <span style={LayoutCanvas.STYLE.size}>
-          {node.width} x {node.height}
-        </span>
+            ...selection, ...phantom, ...cursor}}>
+        {label !== '' &&
+          <span style={LayoutCanvas.STYLE.label}>{label}</span>}
       </div>);
   }
 
@@ -219,12 +239,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return null;
     }
     const node = this.state.carried;
-    const label = (() => {
-      if(node instanceof Reference && node.name !== '') {
-        return node.name;
-      }
-      return '(unnamed)';
-    })();
+    const label = LayoutCanvas.labelOf(node);
     return (
       <div style={{...LayoutCanvas.STYLE.carried,
         left: `${this.state.current.x - this.state.grab.x}px`,
@@ -235,8 +250,81 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         borderRightColor: LayoutCanvas.POLICY_COLOR[node.widthPolicy],
         borderTopColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy],
         borderBottomColor: LayoutCanvas.POLICY_COLOR[node.heightPolicy]}}>
-        <span style={LayoutCanvas.STYLE.label}>{label}</span>
+        {label !== '' &&
+          <span style={LayoutCanvas.STYLE.label}>{label}</span>}
       </div>);
+  }
+
+  private edgeAt(point: Point): Edge {
+    const node = this.boxAt(point);
+    if(node === null) {
+      return null;
+    }
+    const rect = this.elements.get(node).getBoundingClientRect();
+    if(point.x - rect.left <= RESIZE_MARGIN) {
+      return {node, side: Side.LEFT};
+    } else if(rect.right - point.x <= RESIZE_MARGIN) {
+      return {node, side: Side.RIGHT};
+    } else if(point.y - rect.top <= RESIZE_MARGIN) {
+      return {node, side: Side.TOP};
+    } else if(rect.bottom - point.y <= RESIZE_MARGIN) {
+      return {node, side: Side.BOTTOM};
+    }
+    return null;
+  }
+
+  private onHover = (event: React.MouseEvent) => {
+    if(this.state.gesture !== Gesture.NONE) {
+      return;
+    }
+    const edge = this.edgeAt({x: event.clientX, y: event.clientY});
+    const hover = this.state.hover;
+    if(edge === null && hover === null) {
+      return;
+    }
+    if(edge !== null && hover !== null && edge.node === hover.node &&
+        edge.side === hover.side) {
+      return;
+    }
+    this.setState({hover: edge});
+  }
+
+  private onLeave = () => {
+    if(this.state.hover !== null) {
+      this.setState({hover: null});
+    }
+  }
+
+  private resize(point: Point): void {
+    const edge = this.state.edge;
+    const delta = (() => {
+      if(edge.side === Side.LEFT) {
+        return this.state.origin.x - point.x;
+      } else if(edge.side === Side.RIGHT) {
+        return point.x - this.state.origin.x;
+      } else if(edge.side === Side.TOP) {
+        return this.state.origin.y - point.y;
+      }
+      return point.y - this.state.origin.y;
+    })();
+    const size = Math.max(MINIMUM_SIZE,
+      Math.round(this.state.extent + delta));
+    if(edge.side === Side.LEFT || edge.side === Side.RIGHT) {
+      edge.node.width = size;
+      edge.node.widthPolicy = SizePolicy.FIXED;
+    } else {
+      edge.node.height = size;
+      edge.node.heightPolicy = SizePolicy.FIXED;
+    }
+    normalize(this.props.layout.root);
+    this.props.onChange?.();
+  }
+
+  private static labelOf(node: Node): string {
+    if(node instanceof Reference && node.name !== '') {
+      return `<${node.name}>`;
+    }
+    return '';
   }
 
   private register(node: Node, element: HTMLElement): void {
@@ -401,6 +489,27 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private onMouseDown = (event: React.MouseEvent) => {
     const point = {x: event.clientX, y: event.clientY};
     this.bounds = this.container.getBoundingClientRect();
+    this.snapshot = this.props.layout.root.clone();
+    this.settled = null;
+    this.previous = null;
+    this.attach();
+    event.preventDefault();
+    const edge = this.edgeAt(point);
+    if(edge !== null) {
+      const rect = this.elements.get(edge.node).getBoundingClientRect();
+      const extent = (() => {
+        if(edge.side === Side.LEFT || edge.side === Side.RIGHT) {
+          return rect.width;
+        }
+        return rect.height;
+      })();
+      this.setState({
+        gesture: Gesture.RESIZE, edge, extent, origin: point, current: point,
+        carried: null, grab: null, size: null, drop: null
+      });
+      this.props.onSelect?.(edge.node);
+      return;
+    }
     const carried = this.boxAt(point);
     const gesture = (() => {
       if(carried === null) {
@@ -422,21 +531,25 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       const rect = this.elements.get(carried).getBoundingClientRect();
       return {width: rect.width, height: rect.height};
     })();
-    this.snapshot = this.props.layout.root.clone();
-    this.settled = null;
-    this.previous = null;
     this.setState({
-      gesture, carried, grab, size, origin: point, current: point, drop: null
+      gesture, carried, grab, size, origin: point, current: point, drop: null,
+      edge: null
     });
+  }
+
+  private attach(): void {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('keydown', this.onKeyDown);
-    event.preventDefault();
   }
 
   private onMouseMove = (event: MouseEvent) => {
     const point = {x: event.clientX, y: event.clientY};
     this.setState({current: point}, () => {
+      if(this.state.gesture === Gesture.RESIZE) {
+        this.resize(point);
+        return;
+      }
       if(!this.isActive()) {
         return;
       }
@@ -487,8 +600,12 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const region = this.measure();
     const origin = this.state.origin;
     this.setState({
-      gesture: Gesture.NONE, carried: null, grab: null, size: null, drop: null
+      gesture: Gesture.NONE, carried: null, grab: null, size: null,
+      drop: null, edge: null
     });
+    if(gesture === Gesture.RESIZE) {
+      return;
+    }
     if(!active) {
       this.props.onSelect?.(this.boxAt(origin));
       return;
@@ -517,7 +634,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     this.detachListeners();
     this.props.layout.root = this.snapshot;
     this.setState({
-      gesture: Gesture.NONE, carried: null, grab: null, size: null, drop: null
+      gesture: Gesture.NONE, carried: null, grab: null, size: null,
+      drop: null, edge: null
     });
     this.props.onSelect?.(null);
     this.props.onChange?.();
@@ -665,8 +783,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       boxSizing: 'border-box' as 'border-box',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '8px',
+      justifyContent: 'center',
       padding: '0 8px',
       minWidth: 0,
       minHeight: 0,
@@ -713,6 +830,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       boxSizing: 'border-box' as 'border-box',
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
       padding: '0 8px',
       overflow: 'hidden' as 'hidden',
       borderStyle: 'solid' as 'solid',

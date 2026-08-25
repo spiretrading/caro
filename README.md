@@ -81,15 +81,18 @@ not inherit. This differs from component scenarios, which accumulate.
 
 ## Status
 
-Drag on empty space to draw a box. Drag an existing box and it follows the
-cursor while the layout reflows live around a phantom of it, snapped into the
-position it would land in. Dropping a box against the top or bottom of another
-places it as a sibling; dropping against the left or right nests both into a
-new row, and the reverse inside a row. Escape cancels a drag. The properties
-panel names the selection and sets each of its axes to fixed or expanding.
+The app opens on an empty specification, ready to draw. Drag on empty space to
+draw a box, drag an existing box and it follows the cursor while the layout
+reflows live around a phantom of it, and drag a box's border to resize it.
+Escape cancels a gesture. A box carries its name centred as `<Name>` and shows
+nothing when unnamed; the properties panel names the selection and sets each of
+its axes to fixed or expanding.
 
-Containers left holding a single child collapse automatically, so the tree
-stays canonical no matter how much a box is dragged around.
+Dropping a box against the top or bottom of another places it as a sibling;
+dropping against the left or right nests both into a row, and the reverse
+inside a row. Containers left holding a single child collapse, and a root left
+wrapping a lone container absorbs it, so the tree stays canonical no matter how
+much a box is dragged around.
 
 A drag holds its placement while the cursor is over the box being dragged,
 never guesses at a nearest box while a box is under the cursor, and will not
@@ -112,10 +115,12 @@ A box dropped across its neighbour's axis attaches beside the container rather
 than beside the neighbour alone, whenever the neighbour spans that container.
 Every child of a column spans its width, so the right edge of a box and the
 right edge of the column are the same edge, and pairing with the box alone
-would leave the column's other children stranded below a row sized to its
-tallest member. A box narrower than its container still pairs with it, which
-is how a label and its field end up side by side.
+would leave the column's other children stranded beside a container sized to
+its largest member. Whether a box spans is measured against its siblings and
+ignores the box being moved, since the container's own size still counts the
+box that is about to leave it. A box smaller than its siblings still pairs
+with its neighbour, which is how a label and its field end up side by side.
 
 Still missing: spacers are never generated for the gaps between boxes, only
-leaves are drop targets, and there is no undo beyond cancelling a drag in
+leaves are drop targets, and there is no undo beyond cancelling a gesture in
 progress.

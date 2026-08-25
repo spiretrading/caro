@@ -22,13 +22,15 @@ interface State {
 export class Application extends React.Component<{}, State> {
   constructor(props: {}) {
     super(props);
+    const board = Application.createBoard();
+    const component = board.components[0];
     this.state = {
       directory: null,
       paths: [],
       path: '',
-      board: null,
-      component: null,
-      layout: null,
+      board,
+      component,
+      layout: component.layouts[0],
       selection: null,
       revision: 0,
       status: ''
@@ -131,19 +133,23 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onNew = () => {
-    const root = new Container(Orientation.COLUMN, 0, 0, SizePolicy.FLEXIBLE,
-      SizePolicy.FLEXIBLE, []);
-    const layout = new Layout('', '', root, []);
-    const component = new Component('Main', [layout]);
-    const board = new Board('Untitled', [component]);
+    const board = Application.createBoard();
+    const component = board.components[0];
     this.setState({
       path: '',
       board,
       component,
-      layout,
+      layout: component.layouts[0],
       selection: null,
       status: 'Started a new specification.'
     });
+  }
+
+  private static createBoard(): Board {
+    const root = new Container(Orientation.COLUMN, 0, 0, SizePolicy.FLEXIBLE,
+      SizePolicy.FLEXIBLE, []);
+    return new Board('Untitled',
+      [new Component('Main', [new Layout('', '', root, [])])]);
   }
 
   private onOpen = async () => {
