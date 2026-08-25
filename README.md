@@ -81,11 +81,33 @@ not inherit. This differs from component scenarios, which accumulate.
 
 ## Status
 
-The model, the file format, the legacy importer and local load and save are in
-place, along with a first slice of the canvas: drag on the canvas to draw a
-box, then name it and set each axis to fixed or expanding.
+Drag on empty space to draw a box. Drag an existing box and it follows the
+cursor while the layout reflows live around a phantom of it, snapped into the
+position it would land in. Dropping a box against the top or bottom of another
+places it as a sibling; dropping against the left or right nests both into a
+new row, and the reverse inside a row. Escape cancels a drag. The properties
+panel names the selection and sets each of its axes to fixed or expanding.
 
-The snap resolver is not built yet. A drawn box is inserted into the root
-container at the position matching where the drag began; it does not split an
-existing box, generate spacers for the gaps, or create nested rows and
-columns.
+Containers left holding a single child collapse automatically, so the tree
+stays canonical no matter how much a box is dragged around.
+
+A drag holds its placement while the cursor is over the box being dragged,
+never guesses at a nearest box while a box is under the cursor, and will not
+undo a placement until the cursor has travelled far enough to mean it. Without
+those rules a drag into an edge zone oscillates: nesting two boxes into a row
+halves their width, which moves the geometry out from under the cursor, which
+nests it somewhere else.
+
+Edge zones are a quarter of a box's edge, floored at 12px and capped at 64px,
+so the zones that nest a box beside another are reachable on a short edge and
+do not swallow the middle of a long one. Dragging into empty space attaches to
+whichever box is nearest, on the side the cursor lies beyond, so a box can be
+pulled out of a row by dragging below it.
+
+A drawn box resolves against the centre of the rectangle drawn, not against
+the cursor, which would otherwise land in a neighbour's edge zone and nest the
+box instead of stacking it.
+
+Still missing: spacers are never generated for the gaps between boxes, only
+leaves are drop targets, and there is no undo beyond cancelling a drag in
+progress.

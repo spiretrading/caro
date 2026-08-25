@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { BoardView } from './board_view';
-import { LayoutCanvas, NodeProperties } from './editor';
+import { detach, LayoutCanvas, NodeProperties, normalize } from './editor';
 import { Board, Component, Container, Layout, Node, Orientation,
   SizePolicy } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
@@ -99,7 +99,7 @@ export class Application extends React.Component<{}, State> {
       return (
         <LayoutCanvas layout={this.state.layout}
           selection={this.state.selection} onSelect={this.onSelect}
-          onDraw={this.onDraw}/>);
+          onChange={this.onChange}/>);
     } else if(this.state.board !== null) {
       return <BoardView board={this.state.board}/>;
     }
@@ -202,26 +202,14 @@ export class Application extends React.Component<{}, State> {
     this.setState({selection: node});
   }
 
-  private onDraw = (node: Node, index: number) => {
-    const root = this.state.layout.root as Container;
-    root.children.splice(index, 0, node);
-    this.setState({
-      selection: node,
-      revision: this.state.revision + 1,
-      status: 'Drew a box.'
-    });
-  }
-
   private onChange = () => {
     this.setState({revision: this.state.revision + 1});
   }
 
   private onRemove = () => {
     const root = this.state.layout.root as Container;
-    const index = root.children.indexOf(this.state.selection);
-    if(index !== -1) {
-      root.children.splice(index, 1);
-    }
+    detach(root, this.state.selection);
+    normalize(root);
     this.setState({
       selection: null,
       revision: this.state.revision + 1,
