@@ -889,14 +889,14 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const widthPolicy = (() => {
       if(root.orientation === Orientation.COLUMN &&
           region.width >= this.bounds.width * FILL_RATIO) {
-        return SizePolicy.FLEXIBLE;
+        return SizePolicy.FILL;
       }
       return SizePolicy.FIXED;
     })();
     const heightPolicy = (() => {
       if(root.orientation === Orientation.ROW &&
           region.height >= this.bounds.height * FILL_RATIO) {
-        return SizePolicy.FLEXIBLE;
+        return SizePolicy.FILL;
       }
       return SizePolicy.FIXED;
     })();
@@ -962,13 +962,13 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return {policy: node.widthPolicy, size: node.width};
     })();
     const shrink = (() => {
-      if(main.policy === SizePolicy.FLEXIBLE) {
+      if(main.policy === SizePolicy.FILL) {
         return 1;
       }
       return 0;
     })();
     const limit = (() => {
-      if(cross.policy === SizePolicy.FLEXIBLE) {
+      if(cross.policy === SizePolicy.FILL) {
         return '100%';
       }
       return 'none';
@@ -985,22 +985,22 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   private static readonly POLICY_COLOR = {
     [SizePolicy.FIXED]: '#FFB800',
-    [SizePolicy.FLEXIBLE]: '#0066FF',
-    [SizePolicy.COMPONENT]: '#00BF2D',
+    [SizePolicy.FILL]: '#0066FF',
+    [SizePolicy.FIT]: '#00BF2D',
     [SizePolicy.REPEAT]: '#744BFF'
   } as {[policy: string]: string};
 
   private static readonly POLICY_EDGE = {
     [SizePolicy.FIXED]: '#B28100',
-    [SizePolicy.FLEXIBLE]: '#0047B2',
-    [SizePolicy.COMPONENT]: '#008620',
+    [SizePolicy.FILL]: '#0047B2',
+    [SizePolicy.FIT]: '#008620',
     [SizePolicy.REPEAT]: '#5135B2'
   } as {[policy: string]: string};
 
   private static readonly POLICY_INK = {
     [SizePolicy.FIXED]: '#000000',
-    [SizePolicy.FLEXIBLE]: '#FFFFFF',
-    [SizePolicy.COMPONENT]: '#000000',
+    [SizePolicy.FILL]: '#FFFFFF',
+    [SizePolicy.FIT]: '#000000',
     [SizePolicy.REPEAT]: '#FFFFFF'
   } as {[policy: string]: string};
 

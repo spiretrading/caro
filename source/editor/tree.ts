@@ -176,7 +176,7 @@ function ascend(root: Container, target: Node, orientation: Orientation,
 
 function spans(container: Container, child: Node, orientation: Orientation,
     ignore: Node): boolean {
-  if(policyOf(child, orientation) === SizePolicy.FLEXIBLE) {
+  if(policyOf(child, orientation) === SizePolicy.FILL) {
     return true;
   }
   let extent = 0;
@@ -185,7 +185,7 @@ function spans(container: Container, child: Node, orientation: Orientation,
     if(sibling === ignore) {
       continue;
     }
-    if(policyOf(sibling, orientation) === SizePolicy.FLEXIBLE) {
+    if(policyOf(sibling, orientation) === SizePolicy.FILL) {
       return false;
     }
     found = true;
@@ -249,8 +249,8 @@ function collapse(root: Container, container: Container): void {
 
 function aggregate(children: Node[],
     key: 'widthPolicy' | 'heightPolicy'): SizePolicy {
-  for(const policy of [SizePolicy.FLEXIBLE, SizePolicy.REPEAT,
-      SizePolicy.COMPONENT]) {
+  for(const policy of [SizePolicy.FILL, SizePolicy.REPEAT,
+      SizePolicy.FIT]) {
     if(children.some(child => child[key] === policy)) {
       return policy;
     }

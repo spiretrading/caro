@@ -73,8 +73,15 @@ A `Node` is one of:
 - `spacer` -- empty space between siblings.
 
 Every node carries a `width` and `height` in pixels as drawn, a
-`widthPolicy` and `heightPolicy` of `fixed`, `flexible`, `component` or
-`repeat`, and an optional `repeatDirection`.
+`widthPolicy` and `heightPolicy` of `fixed`, `fill`, `fit` or `repeat`, and
+an optional `repeatDirection`.
+
+A `fixed` size is a literal value taken from the visual, a `fill` size takes
+the available space and shares it equally between siblings, and a `fit` size
+is determined by the contents. The terms and their meanings come from
+https://wiki.spiretrading.com/index.php/Layout; the colours come from
+`xd_parser`, which decodes the drawings themselves: yellow `fixed`, blue
+`fill`, green `fit`, purple `repeat`.
 
 Layouts replace one another wholesale when their condition is met; they do
 not inherit. This differs from component scenarios, which accumulate.
@@ -97,8 +104,8 @@ width off. Escape cancels
 a gesture. Delete or Backspace removes the selected box, as
 does the control on the box itself and the button in the properties panel. A
 box carries its name centred as `<Name>` and shows nothing when unnamed; the
-properties panel names the selection and sets each of its axes to fixed or
-expanding.
+properties panel names the selection and sets each of its axes to fixed,
+fill or fit, each choice carrying the colour it paints the box.
 
 Dropping a box against the top or bottom of another places it as a sibling;
 dropping against the left or right nests both into a row, and the reverse

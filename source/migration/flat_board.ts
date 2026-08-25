@@ -3,14 +3,21 @@ import { Board, Component, Container, Layout, Node, Orientation, Reference,
 
 const TOLERANCE = 0.5;
 
+const LEGACY = {
+  fixed: SizePolicy.FIXED,
+  flexible: SizePolicy.FILL,
+  component: SizePolicy.FIT,
+  repeat: SizePolicy.REPEAT
+} as {[name: string]: SizePolicy};
+
 interface FlatBox {
   name: string;
   x: number;
   y: number;
   width: number;
   height: number;
-  width_policy: SizePolicy;
-  height_policy: SizePolicy;
+  width_policy: string;
+  height_policy: string;
   repeat_direction?: string;
 }
 
@@ -84,16 +91,24 @@ function makeLeaf(box: FlatBox): Node {
   const node = (() => {
     if(box.name !== undefined && box.name !== '' &&
         !box.name.startsWith('@')) {
-      return new Reference(box.name, box.width, box.height, box.width_policy,
-        box.height_policy);
+      return new Reference(box.name, box.width, box.height,
+        toPolicy(box.width_policy), toPolicy(box.height_policy));
     }
-    return new Spacer(box.width, box.height, box.width_policy,
-      box.height_policy);
+    return new Spacer(box.width, box.height, toPolicy(box.width_policy),
+      toPolicy(box.height_policy));
   })();
   if(box.repeat_direction !== undefined && box.repeat_direction !== '') {
     node.repeatDirection = box.repeat_direction as any;
   }
   return node;
+}
+
+function toPolicy(name: string): SizePolicy {
+  const policy = LEGACY[name];
+  if(policy === undefined) {
+    throw new Error(`Unrecognized size policy '${name}'.`);
+  }
+  return policy;
 }
 
 function measure(boxes: FlatBox[]) {
@@ -162,8 +177,8 @@ function partition(boxes: FlatBox[], axis: 'x' | 'y',
 
 function aggregate(children: Node[],
     key: 'widthPolicy' | 'heightPolicy'): SizePolicy {
-  for(const policy of [SizePolicy.FLEXIBLE, SizePolicy.REPEAT,
-      SizePolicy.COMPONENT]) {
+  for(const policy of [SizePolicy.FILL, SizePolicy.REPEAT,
+      SizePolicy.FIT]) {
     if(children.some(child => child[key] === policy)) {
       return policy;
     }

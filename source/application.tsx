@@ -167,8 +167,8 @@ export class Application extends React.Component<{}, State> {
   }
 
   private static createBoard(): Board {
-    const root = new Container(Orientation.COLUMN, 0, 0, SizePolicy.FLEXIBLE,
-      SizePolicy.FLEXIBLE, []);
+    const root = new Container(Orientation.COLUMN, 0, 0, SizePolicy.FILL,
+      SizePolicy.FILL, []);
     return new Board('Untitled',
       [new Component('Main', [new Layout('', '', root, [])])]);
   }

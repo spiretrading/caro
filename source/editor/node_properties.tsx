@@ -53,8 +53,8 @@ export class NodeProperties extends React.Component<Properties> {
         <span style={NodeProperties.STYLE.caption}>{caption}</span>
         <div style={NodeProperties.STYLE.choices}>
           {this.renderChoice('Fixed', SizePolicy.FIXED, policy, onPolicy)}
-          {this.renderChoice(
-            'Expanding', SizePolicy.FLEXIBLE, policy, onPolicy)}
+          {this.renderChoice('Fill', SizePolicy.FILL, policy, onPolicy)}
+          {this.renderChoice('Fit', SizePolicy.FIT, policy, onPolicy)}
         </div>
         <input style={NodeProperties.STYLE.input} type='number' min='0'
           value={size} onChange={onSize}/>
@@ -72,7 +72,11 @@ export class NodeProperties extends React.Component<Properties> {
       return NodeProperties.STYLE.choice;
     })();
     return (
-      <button style={style} onClick={() => onPolicy(value)}>{caption}</button>);
+      <button style={style} onClick={() => onPolicy(value)}>
+        <span style={{...NodeProperties.STYLE.swatch,
+          backgroundColor: NodeProperties.POLICY_COLOR[value]}}/>
+        {caption}
+      </button>);
   }
 
   private onName = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,8 +106,8 @@ export class NodeProperties extends React.Component<Properties> {
 
   private static readonly POLICY_COLOR = {
     [SizePolicy.FIXED]: '#FFB800',
-    [SizePolicy.FLEXIBLE]: '#0066FF',
-    [SizePolicy.COMPONENT]: '#00BF2D',
+    [SizePolicy.FILL]: '#0066FF',
+    [SizePolicy.FIT]: '#00BF2D',
     [SizePolicy.REPEAT]: '#744BFF'
   } as {[policy: string]: string};
 
@@ -144,15 +148,25 @@ export class NodeProperties extends React.Component<Properties> {
     },
     choices: {
       display: 'flex',
-      gap: '6px'
+      flexDirection: 'column' as 'column',
+      gap: '4px'
     },
     choice: {
-      flexGrow: 1,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
       padding: '6px 8px',
       fontSize: '12px',
+      textAlign: 'left' as 'left',
       cursor: 'pointer',
       border: '2px solid #E6E6E6',
       backgroundColor: '#FFFFFF'
+    },
+    swatch: {
+      width: '12px',
+      height: '12px',
+      flexShrink: 0,
+      border: '1px solid rgba(0, 0, 0, 0.2)'
     },
     chosen: {
       fontWeight: 700

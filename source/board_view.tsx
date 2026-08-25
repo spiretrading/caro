@@ -83,8 +83,8 @@ export class BoardView extends React.Component<Properties> {
 
   private static readonly POLICY_COLOR = {
     [SizePolicy.FIXED]: '#FFB800',
-    [SizePolicy.FLEXIBLE]: '#0066FF',
-    [SizePolicy.COMPONENT]: '#00BF2D',
+    [SizePolicy.FILL]: '#0066FF',
+    [SizePolicy.FIT]: '#00BF2D',
     [SizePolicy.REPEAT]: '#744BFF'
   } as {[policy: string]: string};
 

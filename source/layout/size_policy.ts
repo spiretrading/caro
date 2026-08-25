@@ -1,14 +1,14 @@
 /** Specifies how a node is sized along a single axis. */
 export enum SizePolicy {
 
-  /** The node is sized in pixels, exactly as drawn. */
+  /** The size is a literal value taken from the visual. */
   FIXED = 'fixed',
 
-  /** The node grows or shrinks to fill the available space. */
-  FLEXIBLE = 'flexible',
+  /** The size fills the available space, shared equally between siblings. */
+  FILL = 'fill',
 
-  /** The referenced component's own layout determines the size. */
-  COMPONENT = 'component',
+  /** The size is determined by the contents. */
+  FIT = 'fit',
 
   /** The node is repeated once per item in a collection. */
   REPEAT = 'repeat'
