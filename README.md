@@ -108,6 +108,14 @@ A drawn box resolves against the centre of the rectangle drawn, not against
 the cursor, which would otherwise land in a neighbour's edge zone and nest the
 box instead of stacking it.
 
+A box dropped across its neighbour's axis attaches beside the container rather
+than beside the neighbour alone, whenever the neighbour spans that container.
+Every child of a column spans its width, so the right edge of a box and the
+right edge of the column are the same edge, and pairing with the box alone
+would leave the column's other children stranded below a row sized to its
+tallest member. A box narrower than its container still pairs with it, which
+is how a label and its field end up side by side.
+
 Still missing: spacers are never generated for the gaps between boxes, only
 leaves are drop targets, and there is no undo beyond cancelling a drag in
 progress.

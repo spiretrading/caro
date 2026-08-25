@@ -58,12 +58,17 @@ export function attach(root: Container, node: Node, target: Node,
     root.children.push(node);
     return;
   }
-  const parent = parentOf(root, target);
+  const orientation = toOrientation(side);
+  const anchor = ascend(root, target, orientation);
+  if(anchor === null) {
+    reroot(root, node, orientation, side);
+    return;
+  }
+  const parent = parentOf(root, anchor);
   if(parent === null) {
     return;
   }
-  const orientation = toOrientation(side);
-  const index = parent.children.indexOf(target);
+  const index = parent.children.indexOf(anchor);
   if(parent.orientation === orientation) {
     const at = (() => {
       if(side === Side.TOP || side === Side.LEFT) {
@@ -76,23 +81,28 @@ export function attach(root: Container, node: Node, target: Node,
   }
   const children = (() => {
     if(side === Side.TOP || side === Side.LEFT) {
-      return [node, target];
+      return [node, anchor];
     }
-    return [target, node];
+    return [anchor, node];
   })();
-  parent.children.splice(index, 1, new Container(orientation, target.width,
-    target.height, target.widthPolicy, target.heightPolicy, children));
+  parent.children.splice(index, 1, new Container(orientation, anchor.width,
+    anchor.height, anchor.widthPolicy, anchor.heightPolicy, children));
 }
 
 /** Returns whether a node already sits against one side of a target, either
     directly or inside the container occupying that slot. */
 export function isPlaced(root: Container, node: Node, target: Node,
     side: Side): boolean {
-  const parent = parentOf(root, target);
-  if(parent === null || parent.orientation !== toOrientation(side)) {
+  const orientation = toOrientation(side);
+  const anchor = ascend(root, target, orientation);
+  if(anchor === null) {
     return false;
   }
-  const index = parent.children.indexOf(target);
+  const parent = parentOf(root, anchor);
+  if(parent === null || parent.orientation !== orientation) {
+    return false;
+  }
+  const index = parent.children.indexOf(anchor);
   const neighbour = (() => {
     if(side === Side.TOP || side === Side.LEFT) {
       return parent.children[index - 1];
@@ -138,6 +148,48 @@ export function toOrientation(side: Side): Orientation {
     return Orientation.COLUMN;
   }
   return Orientation.ROW;
+}
+
+function ascend(root: Container, target: Node,
+    orientation: Orientation): Node {
+  let anchor = target;
+  let parent = parentOf(root, anchor);
+  while(parent !== null && parent.orientation !== orientation &&
+      spans(parent, anchor, orientation)) {
+    if(parent === root) {
+      return null;
+    }
+    anchor = parent;
+    parent = parentOf(root, anchor);
+  }
+  return anchor;
+}
+
+function spans(container: Container, child: Node,
+    orientation: Orientation): boolean {
+  if(orientation === Orientation.ROW) {
+    return child.widthPolicy === SizePolicy.FLEXIBLE ||
+      Math.abs(child.width - container.width) < 1;
+  }
+  return child.heightPolicy === SizePolicy.FLEXIBLE ||
+    Math.abs(child.height - container.height) < 1;
+}
+
+function reroot(root: Container, node: Node, orientation: Orientation,
+    side: Side): void {
+  const inner = (() => {
+    if(root.children.length === 1) {
+      return root.children[0];
+    }
+    return new Container(root.orientation, root.width, root.height,
+      root.widthPolicy, root.heightPolicy, root.children.slice());
+  })();
+  root.orientation = orientation;
+  if(side === Side.TOP || side === Side.LEFT) {
+    root.children = [node, inner];
+  } else {
+    root.children = [inner, node];
+  }
 }
 
 function collapse(root: Container, container: Container): void {
