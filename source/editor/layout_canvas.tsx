@@ -138,7 +138,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         </div>);
     }
     return (
-      <div style={LayoutCanvas.STYLE.surface}>
+      <React.Fragment>
         <div ref={element => this.container = element}
             style={{...LayoutCanvas.STYLE.container,
               flexDirection: LayoutCanvas.toDirection(root.orientation)}}
@@ -153,7 +153,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
             <div style={LayoutCanvas.STYLE.hint}>Drag to draw a box.</div>}
         </div>
         {this.renderCarried()}
-      </div>);
+      </React.Fragment>);
   }
 
   public componentDidUpdate(): void {
@@ -1005,18 +1005,12 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   } as {[policy: string]: string};
 
   private static readonly STYLE = {
-    surface: {
-      flexGrow: 1,
-      display: 'flex',
-      padding: '20px',
-      overflow: 'auto' as 'auto',
-      backgroundColor: '#F5F5F5'
-    },
     container: {
       position: 'relative' as 'relative',
       display: 'flex',
-      flexGrow: 1,
-      minHeight: '400px',
+      alignSelf: 'flex-start',
+      minWidth: '400px',
+      minHeight: '300px',
       backgroundColor: '#FFFFFF',
       border: '1px solid #C8C8C8',
       cursor: 'crosshair',

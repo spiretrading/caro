@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { BoardView } from './board_view';
-import { detach, LayoutCanvas, NodeProperties, normalize } from './editor';
+import { contains, detach, NodeProperties, normalize,
+  ScenarioBoard } from './editor';
 import { Board, Component, Container, Layout, Node, Orientation,
   SizePolicy } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
@@ -12,7 +13,6 @@ interface State {
   path: string;
   board: Board;
   component: Component;
-  layout: Layout;
   selection: Node;
   revision: number;
   status: string;
@@ -30,7 +30,6 @@ export class Application extends React.Component<{}, State> {
       path: '',
       board,
       component,
-      layout: component.layouts[0],
       selection: null,
       revision: 0,
       status: ''
@@ -51,7 +50,7 @@ export class Application extends React.Component<{}, State> {
           {this.renderToolbar()}
           {this.renderBody()}
         </div>
-        {this.state.layout !== null &&
+        {this.state.component !== null &&
           <NodeProperties node={this.state.selection}
             onChange={this.onChange} onRemove={this.onRemove}/>}
       </div>);
@@ -111,14 +110,6 @@ export class Application extends React.Component<{}, State> {
             {this.state.board.components.map((component, index) =>
               <option key={index} value={index}>{component.name}</option>)}
           </select>}
-        {this.state.component !== null &&
-          <select style={Application.STYLE.select} value={this.layoutIndex()}
-              onChange={this.onLayout}>
-            {this.state.component.layouts.map((layout, index) =>
-              <option key={index} value={index}>
-                {Application.describe(layout)}
-              </option>)}
-          </select>}
         <span style={Application.STYLE.status}>{this.state.status}</span>
       </div>);
   }
@@ -131,11 +122,14 @@ export class Application extends React.Component<{}, State> {
   }
 
   private renderBody(): JSX.Element {
-    if(this.state.layout !== null) {
+    if(this.state.component !== null) {
       return (
-        <LayoutCanvas layout={this.state.layout}
+        <ScenarioBoard component={this.state.component}
           selection={this.state.selection} onSelect={this.onSelect}
-          onChange={this.onChange} onRemove={this.onRemove}/>);
+          onChange={this.onChange} onAdd={this.onAdd}
+          onRemoveScenario={this.onRemoveScenario}
+          onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
+          onCondition={this.onCondition}/>);
     } else if(this.state.board !== null) {
       return <BoardView board={this.state.board}/>;
     }
@@ -149,10 +143,6 @@ export class Application extends React.Component<{}, State> {
     return this.state.board.components.indexOf(this.state.component);
   }
 
-  private layoutIndex(): number {
-    return this.state.component.layouts.indexOf(this.state.layout);
-  }
-
   private onNew = () => {
     const board = Application.createBoard();
     const component = board.components[0];
@@ -160,17 +150,19 @@ export class Application extends React.Component<{}, State> {
       path: '',
       board,
       component,
-      layout: component.layouts[0],
       selection: null,
       status: 'Started a new specification.'
     });
   }
 
   private static createBoard(): Board {
-    const root = new Container(Orientation.COLUMN, 0, 0, SizePolicy.FILL,
+    return new Board('Untitled', [new Component('Main',
+      [new Layout('', '', Application.createRoot(), [])])]);
+  }
+
+  private static createRoot(): Container {
+    return new Container(Orientation.COLUMN, 0, 0, SizePolicy.FILL,
       SizePolicy.FILL, []);
-    return new Board('Untitled',
-      [new Component('Main', [new Layout('', '', root, [])])]);
   }
 
   private onOpen = async () => {
@@ -211,8 +203,7 @@ export class Application extends React.Component<{}, State> {
         }
         return `Loaded ${path}.`;
       })();
-      this.setState({
-        path, board, component: null, layout: null, selection: null, status});
+      this.setState({path, board, component: null, selection: null, status});
     } catch(error) {
       this.setState({status: `${error}`});
     }
@@ -221,16 +212,49 @@ export class Application extends React.Component<{}, State> {
   private onComponent = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const index = Number(event.target.value);
     if(index === -1) {
-      this.setState({component: null, layout: null, selection: null});
+      this.setState({component: null, selection: null});
       return;
     }
-    const component = this.state.board.components[index];
-    this.setState({component, layout: component.layouts[0], selection: null});
+    this.setState({
+      component: this.state.board.components[index], selection: null});
   }
 
-  private onLayout = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const layout = this.state.component.layouts[Number(event.target.value)];
-    this.setState({layout, selection: null});
+  private onAdd = () => {
+    this.state.component.layouts.push(new Layout('', '',
+      Application.createRoot(), []));
+    this.setState({
+      revision: this.state.revision + 1, status: 'Added a scenario.'});
+  }
+
+  private onRemoveScenario = (layout: Layout) => {
+    const layouts = this.state.component.layouts;
+    const index = layouts.indexOf(layout);
+    if(index <= 0) {
+      return;
+    }
+    layouts.splice(index, 1);
+    this.setState({
+      selection: null,
+      revision: this.state.revision + 1,
+      status: 'Removed a scenario.'
+    });
+  }
+
+  private onMoveScenario = (layout: Layout, offset: number) => {
+    const layouts = this.state.component.layouts;
+    const index = layouts.indexOf(layout);
+    const target = index + offset;
+    if(index <= 0 || target <= 0 || target >= layouts.length) {
+      return;
+    }
+    layouts.splice(index, 1);
+    layouts.splice(target, 0, layout);
+    this.setState({revision: this.state.revision + 1});
+  }
+
+  private onCondition = (layout: Layout, condition: string) => {
+    layout.condition = condition;
+    this.setState({revision: this.state.revision + 1});
   }
 
   private onSelect = (node: Node) => {
@@ -238,12 +262,17 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onChange = () => {
-    normalize(this.state.layout.root);
+    for(const layout of this.state.component.layouts) {
+      normalize(layout.root);
+    }
     this.setState({revision: this.state.revision + 1});
   }
 
   private onRemove = () => {
-    const root = this.state.layout.root as Container;
+    const root = this.rootOf(this.state.selection);
+    if(root === null) {
+      return;
+    }
     detach(root, this.state.selection);
     normalize(root);
     this.setState({
@@ -278,11 +307,14 @@ export class Application extends React.Component<{}, State> {
     }
   }
 
-  private static describe(layout: Layout): string {
-    if(layout.condition === '') {
-      return 'default';
+  private rootOf(node: Node): Container {
+    for(const layout of this.state.component.layouts) {
+      const root = layout.root as Container;
+      if(contains(root, node)) {
+        return root;
+      }
     }
-    return layout.condition.replace(/\n/g, ' | ');
+    return null;
   }
 
   private static readonly STYLE = {

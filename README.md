@@ -89,7 +89,22 @@ not inherit. This differs from component scenarios, which accumulate.
 ## Status
 
 The app opens on an empty specification, ready to draw, with New, Open and
-Save on the toolbar. Drag on empty space to draw a box, drag an existing box
+Save on the toolbar.
+
+A component's scenarios are laid out side by side, as the XD boards draw them.
+The leftmost is the default: it always exists, carries no condition, and
+cannot be moved or deleted, because evaluation runs right to left and takes
+the first match, so anything to the default's left could never be reached.
+Every other scenario carries a condition written as free text and can be
+reordered or deleted. Conditions are not parsed: a selector means something
+different to a web target than to a Qt one, and the condition is a field on
+the scenario rather than a label floating beside it, which is what made them
+losable in XD.
+
+Scenarios are independent. Adding one gives a blank layout, only one is ever
+laid out at a time, and editing one never touches another. A scenario's canvas
+grows with its contents and never falls below a floor, so a blank one still
+has room to draw into. Drag on empty space to draw a box, drag an existing box
 and it follows the cursor while the layout reflows live around a phantom of
 it, and drag a box's border to resize it, or a corner to resize both axes at
 once.
