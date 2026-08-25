@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmitOnError": true,
+    "noImplicitAny": true,
+    "outDir": "./application",
+    "preserveConstEnums": true,
+    "removeComments": true,
+    "rootDir": "./source",
+    "sourceMap": true,
+    "strictNullChecks": false,
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.asynciterable"],
+    "types": []
+  },
+  "include": [
+    "./source/**/*.ts",
+    "./source/**/*.tsx"
+  ]
+}

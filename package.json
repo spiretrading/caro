@@ -1,0 +1,25 @@
+{
+  "name": "caro",
+  "version": "0.1.0",
+  "description": "Editor for authoring UI layout specifications.",
+  "license": "GPL-3.0",
+  "scripts": {
+    "compile": "node node_modules/typescript/bin/tsc -p .",
+    "build": "node node_modules/webpack/bin/webpack.js",
+    "start": "node node_modules/webpack-dev-server/bin/webpack-dev-server.js"
+  },
+  "devDependencies": {
+    "@types/react": "17.0.80",
+    "@types/react-dom": "17.0.11",
+    "source-map-loader": "5.0.0",
+    "ts-loader": "9.2.6",
+    "typescript": "6.0.3",
+    "webpack": "5.105.4",
+    "webpack-cli": "5.1.4",
+    "webpack-dev-server": "5.2.2"
+  },
+  "dependencies": {
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
+  }
+}
