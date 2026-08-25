@@ -40,7 +40,7 @@ export class NodeProperties extends React.Component<Properties> {
           this.onHeightPolicy, this.onHeight)}
         <button style={NodeProperties.STYLE.remove}
             onClick={() => this.props.onRemove?.()}>
-          Remove
+          Delete
         </button>
       </div>);
   }
@@ -159,8 +159,11 @@ export class NodeProperties extends React.Component<Properties> {
       fontWeight: 700
     },
     remove: {
-      padding: '6px 8px',
+      padding: '8px',
       fontSize: '12px',
+      color: '#FFFFFF',
+      backgroundColor: '#E63F44',
+      border: 'none',
       cursor: 'pointer'
     }
   };

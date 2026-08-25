@@ -86,9 +86,11 @@ Save on the toolbar. Drag on empty space to draw a box, drag an existing box
 and it follows the cursor while the layout reflows live around a phantom of
 it, and drag a box's border to resize it, or a corner to resize both axes at
 once.
-Escape cancels a gesture. A box carries its name centred as `<Name>` and shows
-nothing when unnamed; the properties panel names the selection and sets each of
-its axes to fixed or expanding.
+Escape cancels a gesture. Delete or Backspace removes the selected box, as
+does the control on the box itself and the button in the properties panel. A
+box carries its name centred as `<Name>` and shows nothing when unnamed; the
+properties panel names the selection and sets each of its axes to fixed or
+expanding.
 
 Dropping a box against the top or bottom of another places it as a sibling;
 dropping against the left or right nests both into a row, and the reverse

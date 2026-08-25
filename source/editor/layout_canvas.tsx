@@ -25,6 +25,12 @@ const RESIZE_MARGIN = 8;
 /** The smallest a box may be resized to. */
 const MINIMUM_SIZE = 8;
 
+/** How far the delete control sits inside a box's corner. */
+const DELETE_INSET = 10;
+
+/** The smallest box that has room for a delete control. */
+const DELETE_ROOM = 44;
+
 /** The largest the box following the cursor is drawn. */
 const CARRIED_LIMIT = {width: 400, height: 200};
 
@@ -66,6 +72,9 @@ interface Properties {
 
   /** Called whenever the layout has been modified. */
   onChange?: () => void;
+
+  /** Called when the selected box is deleted from the canvas. */
+  onRemove?: () => void;
 }
 
 interface Edge {
@@ -205,7 +214,32 @@ export class LayoutCanvas extends React.Component<Properties, State> {
             ...selection, ...phantom, ...cursor}}>
         {label !== '' &&
           <span style={LayoutCanvas.STYLE.label}>{label}</span>}
+        {this.renderDelete(node)}
       </div>);
+  }
+
+  private renderDelete(node: Node): JSX.Element {
+    if(node !== this.props.selection ||
+        this.state.gesture !== Gesture.NONE) {
+      return null;
+    }
+    const element = this.elements.get(node);
+    if(element === undefined) {
+      return null;
+    }
+    const rect = element.getBoundingClientRect();
+    if(rect.width < DELETE_ROOM || rect.height < DELETE_ROOM) {
+      return null;
+    }
+    return (
+      <button style={LayoutCanvas.STYLE.remove} title='Delete'
+        onMouseDown={this.onRemove}>{'\u00D7'}</button>);
+  }
+
+  private onRemove = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    this.props.onRemove?.();
   }
 
   private renderRubberBand(): JSX.Element {
@@ -823,6 +857,24 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       backgroundColor: '#EDE7FF',
       outline: '2px solid #684BC7',
       outlineOffset: '-2px'
+    },
+    remove: {
+      position: 'absolute' as 'absolute',
+      top: `${DELETE_INSET}px`,
+      right: `${DELETE_INSET}px`,
+      width: '18px',
+      height: '18px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 0,
+      border: 'none',
+      borderRadius: '9px',
+      backgroundColor: '#684BC7',
+      color: '#FFFFFF',
+      fontSize: '13px',
+      lineHeight: '13px',
+      cursor: 'pointer'
     },
     phantom: {
       borderStyle: 'dashed' as 'dashed',

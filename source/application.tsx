@@ -57,6 +57,34 @@ export class Application extends React.Component<{}, State> {
       </div>);
   }
 
+  public componentDidMount(): void {
+    window.addEventListener('keydown', this.onKeyDown);
+  }
+
+  public componentWillUnmount(): void {
+    window.removeEventListener('keydown', this.onKeyDown);
+  }
+
+  private onKeyDown = (event: KeyboardEvent) => {
+    if(event.key !== 'Delete' && event.key !== 'Backspace') {
+      return;
+    }
+    if(this.state.selection === null || Application.isTyping()) {
+      return;
+    }
+    event.preventDefault();
+    this.onRemove();
+  }
+
+  private static isTyping(): boolean {
+    const active = document.activeElement;
+    if(active === null) {
+      return false;
+    }
+    return active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' ||
+      active.tagName === 'SELECT';
+  }
+
   private renderToolbar(): JSX.Element {
     return (
       <div style={Application.STYLE.toolbar}>
@@ -107,7 +135,7 @@ export class Application extends React.Component<{}, State> {
       return (
         <LayoutCanvas layout={this.state.layout}
           selection={this.state.selection} onSelect={this.onSelect}
-          onChange={this.onChange}/>);
+          onChange={this.onChange} onRemove={this.onRemove}/>);
     } else if(this.state.board !== null) {
       return <BoardView board={this.state.board}/>;
     }
