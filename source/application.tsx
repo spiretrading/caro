@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { BoardView } from './board_view';
 import { contains, detach, ensureBlank, makeBlank, NodeProperties,
   normalize, prune, ScenarioBoard } from './editor';
 import { Board, Component, Container, Layout, Node, Orientation,
@@ -106,7 +105,6 @@ export class Application extends React.Component<{}, State> {
         {this.state.board !== null &&
           <select style={Application.STYLE.select}
               value={this.componentIndex()} onChange={this.onComponent}>
-            <option value={-1}>Overview</option>
             {this.state.board.components.map((component, index) =>
               <option key={index} value={index}>{component.name}</option>)}
           </select>}
@@ -130,8 +128,6 @@ export class Application extends React.Component<{}, State> {
           onRemoveScenario={this.onRemoveScenario}
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
           onCondition={this.onCondition}/>);
-    } else if(this.state.board !== null) {
-      return <BoardView board={this.state.board}/>;
     }
     return (
       <div style={Application.STYLE.placeholder}>
@@ -199,7 +195,11 @@ export class Application extends React.Component<{}, State> {
         }
         return `Loaded ${path}.`;
       })();
-      this.setState({path, board, component: null, selection: null, status});
+      const component = board.components[0] ?? null;
+      if(component !== null) {
+        ensureBlank(component);
+      }
+      this.setState({path, board, component, selection: null, status});
     } catch(error) {
       this.setState({status: `${error}`});
     }
@@ -207,10 +207,6 @@ export class Application extends React.Component<{}, State> {
 
   private onComponent = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const index = Number(event.target.value);
-    if(index === -1) {
-      this.setState({component: null, selection: null});
-      return;
-    }
     const component = this.state.board.components[index];
     ensureBlank(component);
     this.setState({component, selection: null});
