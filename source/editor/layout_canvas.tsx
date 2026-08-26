@@ -75,6 +75,9 @@ interface Properties {
   /** The layout being edited. */
   layout: Layout;
 
+  /** How much the canvas is magnified, 1 being its literal size. */
+  zoom: number;
+
   /** The currently selected node, null when nothing is selected. */
   selection: Node;
 
@@ -150,7 +153,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return (
       <React.Fragment>
         <div ref={element => this.container = element}
-            style={{...LayoutCanvas.STYLE.container,
+            style={{...LayoutCanvas.STYLE.container, zoom: this.props.zoom,
               flexDirection: LayoutCanvas.toDirection(root.orientation)}}
             onMouseDown={this.onMouseDown} onMouseMove={this.onHover}
             onMouseLeave={this.onLeave}>
@@ -279,11 +282,12 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private renderGuide = (guide: Guide, index: number) => {
+    const offset = this.local(guide.offset);
     const style = (() => {
       if(guide.vertical) {
-        return {left: `${guide.offset}px`, top: 0, bottom: 0, width: '1px'};
+        return {left: `${offset}px`, top: 0, bottom: 0, width: '1px'};
       }
-      return {top: `${guide.offset}px`, left: 0, right: 0, height: '1px'};
+      return {top: `${offset}px`, left: 0, right: 0, height: '1px'};
     })();
     return (
       <div key={index}
@@ -419,9 +423,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const region = this.measure();
     return (
       <div style={{...LayoutCanvas.STYLE.rubberBand,
-        left: `${region.x - this.inset.x}px`,
-        top: `${region.y - this.inset.y}px`,
-        width: `${region.width}px`, height: `${region.height}px`}}/>);
+        left: `${this.local(region.x - this.inset.x)}px`,
+        top: `${this.local(region.y - this.inset.y)}px`,
+        width: `${this.local(region.width)}px`,
+        height: `${this.local(region.height)}px`}}/>);
   }
 
   private renderMarker(): JSX.Element {
@@ -539,9 +544,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     }
     const rect = element.getBoundingClientRect();
     if(vertical) {
-      return rect.height;
+      return this.local(rect.height);
     }
-    return rect.width;
+    return this.local(rect.width);
   }
 
   private onHover = (event: React.MouseEvent) => {
@@ -571,10 +576,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const edge = this.state.edge;
     if(edge.horizontal !== null) {
       LayoutCanvas.apply(edge.horizontal,
-        point.x - this.state.origin.x, false);
+        this.local(point.x - this.state.origin.x), false);
     }
     if(edge.vertical !== null) {
-      LayoutCanvas.apply(edge.vertical, point.y - this.state.origin.y, true);
+      LayoutCanvas.apply(edge.vertical,
+        this.local(point.y - this.state.origin.y), true);
     }
     normalize(this.props.layout.root);
     this.props.onChange?.();
@@ -781,8 +787,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         }
         return rect.right;
       })();
-      return {left: left - this.inset.x, top: rect.top - this.inset.y,
-        width: 3, height: rect.height};
+      return {left: this.local(left - this.inset.x),
+        top: this.local(rect.top - this.inset.y), width: 3,
+        height: this.local(rect.height)};
     }
     const top = (() => {
       if(side === Side.TOP) {
@@ -790,8 +797,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return rect.bottom;
     })();
-    return {left: rect.left - this.inset.x, top: top - this.inset.y,
-      width: rect.width, height: 3};
+    return {left: this.local(rect.left - this.inset.x),
+      top: this.local(top - this.inset.y), width: this.local(rect.width),
+      height: 3};
   }
 
   private nearest(candidates: Node[], point: Point): Node {
@@ -848,8 +856,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const point = {x: event.clientX, y: event.clientY};
     this.bounds = this.container.getBoundingClientRect();
     this.inset = {
-      x: this.bounds.left + this.container.clientLeft,
-      y: this.bounds.top + this.container.clientTop
+      x: this.bounds.left + this.container.clientLeft * this.props.zoom,
+      y: this.bounds.top + this.container.clientTop * this.props.zoom
     };
     this.snapshot = this.props.layout.root.clone();
     this.settled = null;
@@ -1018,12 +1026,16 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return SizePolicy.FIXED;
     })();
-    return new Reference('', Math.round(region.width),
-      Math.round(region.height), widthPolicy, heightPolicy);
+    return new Reference('', Math.round(this.local(region.width)),
+      Math.round(this.local(region.height)), widthPolicy, heightPolicy);
   }
 
   private static fills(extent: number, available: number): boolean {
     return extent >= available * FILL_RATIO && extent <= available;
+  }
+
+  private local(value: number): number {
+    return value / this.props.zoom;
   }
 
   private static zoneOf(extent: number): number {
@@ -1197,6 +1209,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     },
     rubberBand: {
       position: 'absolute' as 'absolute',
+      boxSizing: 'border-box' as 'border-box',
       border: '2px dashed #684BC7',
       backgroundColor: 'rgba(104, 75, 199, 0.1)',
       pointerEvents: 'none' as 'none'

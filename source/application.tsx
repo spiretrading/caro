@@ -7,11 +7,15 @@ import { Board, Component, Container, Layout, Node, Orientation,
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
 
+/** The magnifications a canvas steps through, in ascending order. */
+const ZOOM_STEPS = [1, 1.5, 2, 3, 4];
+
 interface State {
   file: SpecificationFile;
   board: Board;
   component: Component;
   selection: Node;
+  zoom: number;
   revision: number;
   status: string;
 }
@@ -27,6 +31,7 @@ export class Application extends React.Component<{}, State> {
       board,
       component,
       selection: null,
+      zoom: 1,
       revision: 0,
       status: ''
     };
@@ -134,7 +139,43 @@ export class Application extends React.Component<{}, State> {
             {'\u00D7'}
           </button>}
         <span style={Application.STYLE.status}>{this.state.status}</span>
+        {this.state.component !== null && this.renderZoom()}
       </div>);
+  }
+
+  private renderZoom(): JSX.Element {
+    const zoom = this.state.zoom;
+    return (
+      <div style={Application.STYLE.zoom}>
+        <button style={Application.STYLE.control} title='Zoom out'
+            disabled={zoom <= ZOOM_STEPS[0]}
+            onClick={() => this.onZoom(-1)}>
+          {'\u2212'}
+        </button>
+        <button style={Application.STYLE.magnification}
+            title='Back to the literal size' onClick={this.onResetZoom}>
+          {`${Math.round(zoom * 100)}%`}
+        </button>
+        <button style={Application.STYLE.control} title='Zoom in'
+            disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+            onClick={() => this.onZoom(1)}>
+          +
+        </button>
+      </div>);
+  }
+
+  private onZoom = (steps: number) => {
+    const index = ZOOM_STEPS.indexOf(this.state.zoom) + steps;
+    const zoom = ZOOM_STEPS[
+      Math.min(Math.max(index, 0), ZOOM_STEPS.length - 1)];
+    if(zoom === this.state.zoom) {
+      return;
+    }
+    this.setState({zoom});
+  }
+
+  private onResetZoom = () => {
+    this.setState({zoom: 1});
   }
 
   private renderBody(): JSX.Element {
@@ -146,7 +187,8 @@ export class Application extends React.Component<{}, State> {
           onRemoveScenario={this.onRemoveScenario}
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
           onCondition={this.onCondition}
-          onProperties={this.onProperties}/>);
+          onProperties={this.onProperties} zoom={this.state.zoom}
+          onZoom={this.onZoom}/>);
     }
     return (
       <div style={Application.STYLE.placeholder}>
@@ -366,6 +408,22 @@ export class Application extends React.Component<{}, State> {
       padding: 0,
       fontSize: '14px',
       border: '1px solid #C8C8C8',
+      backgroundColor: '#FFFFFF',
+      cursor: 'pointer'
+    },
+    zoom: {
+      display: 'flex',
+      flexShrink: 0
+    },
+    magnification: {
+      width: '52px',
+      height: '28px',
+      padding: 0,
+      fontSize: '12px',
+      fontFamily: 'inherit',
+      border: '1px solid #C8C8C8',
+      borderLeft: 'none',
+      borderRight: 'none',
       backgroundColor: '#FFFFFF',
       cursor: 'pointer'
     },

@@ -50,6 +50,7 @@ export class PropertiesEditor extends React.Component<Properties> {
     field: {
       boxSizing: 'border-box' as 'border-box',
       width: '100%',
+      maxWidth: '560px',
       padding: '6px',
       fontSize: '12px',
       lineHeight: '16px',

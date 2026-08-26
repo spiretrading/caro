@@ -3,6 +3,13 @@ import { Component, Layout, Node } from '../layout';
 import { LayoutCanvas } from './layout_canvas';
 import { PropertiesEditor } from './properties_editor';
 
+interface Anchor {
+  element: Element;
+  point: {x: number, y: number};
+  across: number;
+  down: number;
+}
+
 interface Properties {
 
   /** The component whose scenarios are shown. */
@@ -10,6 +17,12 @@ interface Properties {
 
   /** The currently selected node, null when nothing is selected. */
   selection: Node;
+
+  /** How much the canvases are magnified, 1 being their literal size. */
+  zoom: number;
+
+  /** Called to magnify or shrink the canvases by a number of steps. */
+  onZoom?: (steps: number) => void;
 
   /** Called when a node is selected, with null when the selection clears. */
   onSelect?: (node: Node) => void;
@@ -37,9 +50,70 @@ interface Properties {
 export class ScenarioBoard extends React.Component<Properties> {
   public render(): JSX.Element {
     return (
-      <div style={ScenarioBoard.STYLE.surface}>
+      <div ref={element => this.surface = element}
+          style={ScenarioBoard.STYLE.surface}>
         {this.props.component.layouts.map(this.renderScenario)}
       </div>);
+  }
+
+  public componentDidMount(): void {
+    this.surface.addEventListener('wheel', this.onWheel, {passive: false});
+  }
+
+  public componentWillUnmount(): void {
+    this.surface.removeEventListener('wheel', this.onWheel);
+  }
+
+  public getSnapshotBeforeUpdate(previous: Properties): Anchor {
+    if(this.props.zoom === previous.zoom) {
+      return null;
+    }
+    const rect = this.surface.getBoundingClientRect();
+    const point = this.cursor ?? {x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2};
+    this.cursor = null;
+    const element = document.elementFromPoint(point.x, point.y);
+    if(element === null || !this.surface.contains(element)) {
+      return null;
+    }
+    const bounds = element.getBoundingClientRect();
+    return {
+      element,
+      point,
+      across: (point.x - bounds.left) / Math.max(bounds.width, 1),
+      down: (point.y - bounds.top) / Math.max(bounds.height, 1)
+    };
+  }
+
+  public componentDidUpdate(previous: Properties, state: {},
+      anchor: Anchor): void {
+    if(anchor === null || anchor === undefined ||
+        !this.surface.contains(anchor.element)) {
+      return;
+    }
+    const bounds = anchor.element.getBoundingClientRect();
+    this.surface.scrollLeft +=
+      bounds.left + anchor.across * bounds.width - anchor.point.x;
+    this.surface.scrollTop +=
+      bounds.top + anchor.down * bounds.height - anchor.point.y;
+  }
+
+  private surface: HTMLDivElement;
+  private cursor: {x: number, y: number};
+
+  private onWheel = (event: WheelEvent) => {
+    if(!event.ctrlKey) {
+      return;
+    }
+    event.preventDefault();
+    const steps = (() => {
+      if(event.deltaY < 0) {
+        return 1;
+      }
+      return -1;
+    })();
+    this.cursor = {x: event.clientX, y: event.clientY};
+    this.props.onZoom?.(steps);
   }
 
   private renderScenario = (layout: Layout, index: number) => {
@@ -50,8 +124,8 @@ export class ScenarioBoard extends React.Component<Properties> {
           {this.renderControls(layout, index)}
         </div>
         <LayoutCanvas layout={layout} selection={this.props.selection}
-          onSelect={this.props.onSelect} onChange={this.props.onChange}
-          onRemove={this.props.onRemoveBox}/>
+          zoom={this.props.zoom} onSelect={this.props.onSelect}
+          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}/>
         {this.renderProperties(layout, index)}
       </div>);
   }

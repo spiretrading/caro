@@ -201,6 +201,32 @@ A drawn box resolves against the centre of the rectangle drawn, not against
 the cursor, which would otherwise land in a neighbour's edge zone and nest the
 box instead of stacking it.
 
+Canvases magnify from their literal size up to four times it, stepped from the
+toolbar or with the wheel held under control. Magnification is a property of
+the board rather than of one scenario, since scenarios sit side by side to be
+compared and only one of them fits on screen at four times anyway. The canvas
+alone magnifies; the condition and properties fields beside it are controls
+rather than drawing, and a text field at four times helps nobody.
+
+The picture scales; the model does not. A canvas is magnified with CSS `zoom`
+rather than a transform, so it occupies the space it is drawn at instead of
+overrunning its card, and every hit test keeps comparing a cursor against a
+rectangle in the same screen coordinates. What that leaves is the handful of
+places where a distance on screen becomes a size in the model: the rectangle a
+box is drawn at, the distance an edge is dragged, the extents a splitter
+captures when it takes hold, and the offsets the guides, the drop marker and
+the rubber band are positioned by. Each divides by the magnification. The
+thresholds do not, and should not: a grab margin is eight pixels of screen
+whatever the canvas is magnified to, which is what makes a box a single pixel
+tall reachable at all -- at four times it is four pixels of screen, and four
+pixels of drag move it by one.
+
+Magnifying holds still whatever sits under the cursor, or under the middle of
+the board when the toolbar drives it. It does that by measuring the element
+under that point before and after, and correcting the scroll by the
+difference, rather than by scaling the scroll offset: only the canvases
+magnify, so scaling the offset threw the board off screen.
+
 A box drawn across most of the canvas is taken to fill it, but only up to the
 canvas itself: drawn past the edge it is fixed at the size it was drawn, and
 the section grows to hold it. Filling more than the space available is not a
