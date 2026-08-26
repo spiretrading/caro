@@ -1,5 +1,13 @@
 const path = require('path');
+const webpack = require('webpack');
 const PROD = JSON.parse(process.env.PROD_ENV || '0');
+function stamp() {
+  const now = new Date();
+  const pad = value => `${value}`.padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-` +
+    `${pad(now.getDate())} ${pad(now.getHours())}:` +
+    `${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
 module.exports = {
   devtool: PROD ? false : 'source-map',
   entry: path.resolve(__dirname, 'source/index.tsx'),
@@ -35,6 +43,12 @@ module.exports = {
   performance: {
     hints: false
   },
+  plugins: [
+    new webpack.DefinePlugin({
+      BUILD: webpack.DefinePlugin.runtimeValue(
+        () => JSON.stringify(stamp()), true)
+    })
+  ],
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.json']
   }

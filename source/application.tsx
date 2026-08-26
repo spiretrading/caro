@@ -138,6 +138,9 @@ export class Application extends React.Component<{}, State> {
             {'\u00D7'}
           </button>}
         <span style={Application.STYLE.status}>{this.state.status}</span>
+        <span style={Application.STYLE.build} title={`Built ${BUILD}`}>
+          {BUILD.slice(11)}
+        </span>
         {this.state.component !== null && this.renderZoom()}
       </div>);
   }
@@ -481,6 +484,11 @@ export class Application extends React.Component<{}, State> {
       flexGrow: 1,
       fontSize: '12px',
       color: '#555555'
+    },
+    build: {
+      flexShrink: 0,
+      fontSize: '11px',
+      color: '#AAAAAA'
     },
     placeholder: {
       display: 'flex',
