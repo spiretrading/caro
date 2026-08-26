@@ -133,9 +133,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   public render(): JSX.Element {
     const extent = this.extent();
     return (
-      <div ref={element => this.container = element}
+      <div ref={element => this.container = element} data-canvas=''
+          data-keeps-selection=''
           style={{...LayoutCanvas.STYLE.container, zoom: this.props.zoom,
-            width: `${extent.width}px`, height: `${extent.height}px`}}
+            width: `${extent.width}px`, height: `${extent.height}px`,
+            ...LayoutCanvas.cursorFor(this.state.handle)}}
           onMouseDown={this.onMouseDown} onMouseMove={this.onHover}
           onMouseLeave={this.onLeave}>
         {this.props.boxes.map(this.renderBox)}
@@ -611,6 +613,23 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return '';
     }
     return `<${box.name}>`;
+  }
+
+  /** Returns the cursor an edge of the selection is grabbed by. */
+  private static cursorFor(handle: Handle) {
+    if(handle === null) {
+      return {};
+    }
+    if((handle.left && handle.top) || (handle.right && handle.bottom)) {
+      return {cursor: 'nwse-resize'};
+    }
+    if((handle.right && handle.top) || (handle.left && handle.bottom)) {
+      return {cursor: 'nesw-resize'};
+    }
+    if(handle.left || handle.right) {
+      return {cursor: 'ew-resize'};
+    }
+    return {cursor: 'ns-resize'};
   }
 
   private static sameHandle(left: Handle, right: Handle): boolean {
