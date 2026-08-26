@@ -265,6 +265,25 @@ and all of it was treating a symptom. What cured it was giving a box
 coordinates of its own: a drag moves the box and nothing else moves under it,
 so there is no loop left to damp.
 
+Ctrl+C copies whatever is selected and Ctrl+V puts it down again, in the
+canvas last worked in rather than the one it came from, so a box is carried
+from one scenario to another by pressing the canvas it is wanted in. A copy
+lands offset from what it was taken from and is left selected, ready to be
+dragged where it belongs. What is already there holds its ground and the copy
+gives way to it, which is the reverse of drawing: a box drawn on top of
+another pushes it aside, because the drawing says where the box goes, while a
+paste only says that a box is wanted. Pasting again takes up from where the
+last copy landed rather than from the original, so copies walk down the canvas
+instead of piling on one spot.
+
+A whole scenario is copied by the control on its card, and pasted beside the
+one it was taken from. Scenarios start blank and are independent of one
+another, so a variant would otherwise have to be redrawn; the clone carries
+the condition it came from, which is the first thing to edit. The default is
+copied like any other scenario but is never displaced by a paste, since it is
+the one every variant is a variant of. The waiting blank offers no control:
+there is nothing in it to copy.
+
 Canvases magnify from their literal size up to ten times it, stepped from the
 toolbar or with the wheel held under control. Magnification is a property of
 the board rather than of one scenario, since scenarios sit side by side to be

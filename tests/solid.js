@@ -218,6 +218,6 @@ async function main() {
     sized !== undefined, true);
 
   console.log(failures === 0 ? '\nsolid fills work' : `\n${failures} FAILURES`);
-  process.exit(0);
+  process.exit(failures === 0 ? 0 : 1);
 }
 main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });

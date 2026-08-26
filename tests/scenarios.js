@@ -57,7 +57,12 @@ async function main() {
         const card = canvas.parentElement;
         const heading = card.firstChild;
         const input = heading.querySelector('input');
-        const label = input ? input.value : heading.textContent.trim();
+        const marker = heading.querySelector('span');
+        const label = (() => {
+          if(input !== null) { return input.value; }
+          if(marker !== null) { return marker.textContent.trim(); }
+          return heading.textContent.trim();
+        })();
         const boxes = [];
         const walk = e => { for(const c of e.children) {
           if(c.style.boxShadow.indexOf('inset') !== -1) {
@@ -183,7 +188,7 @@ async function main() {
     cards.map(c => c.boxes).join('|'), '<Header>||');
 
   console.log(failures === 0 ? '\nscenarios work' : `\n${failures} FAILURES`);
-  process.exit(0);
+  process.exit(failures === 0 ? 0 : 1);
 }
 
 main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });

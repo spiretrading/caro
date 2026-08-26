@@ -166,6 +166,6 @@ async function main() {
     (await evaluate(NAMES)).length > 0, true);
 
   console.log(failures === 0 ? '\ndeleting works' : `\n${failures} FAILURES`);
-  process.exit(0);
+  process.exit(failures === 0 ? 0 : 1);
 }
 main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });

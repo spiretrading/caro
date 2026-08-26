@@ -3,6 +3,20 @@ import { Box } from '../layout';
 /** How many times boxes are shoved clear before the attempt is given up. */
 const PASSES = 16;
 
+/** How far a pasted copy sits from what it was copied from. */
+const OFFSET = 20;
+
+/** Returns copies of a set of boxes, shifted together so that a copy does
+    not sit hidden behind what it was copied from. */
+export function copyOf(boxes: Box[]): Box[] {
+  return boxes.map(box => {
+    const copy = box.clone();
+    copy.x = box.x + OFFSET;
+    copy.y = box.y + OFFSET;
+    return copy;
+  });
+}
+
 /** Returns the space a set of boxes covers. */
 export function extentOf(boxes: Box[]) {
   if(boxes.length === 0) {

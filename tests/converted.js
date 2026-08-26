@@ -8,7 +8,7 @@ const SPECS = process.env.CARO_SPECS ||
   path.resolve(__dirname, '..', '..', 'caro_specs');
 if(!require('fs').existsSync(SPECS)) {
   console.log(`skipped: no specifications at ${SPECS}`);
-  process.exit(0);
+  process.exit(failures === 0 ? 0 : 1);
 }
 
 const http = require('http');

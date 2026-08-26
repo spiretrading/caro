@@ -25,14 +25,17 @@ interface Properties {
   onZoom?: (steps: number) => void;
 
   /** Called when the selection changes, adding to it rather than replacing
-      it when asked. */
-  onSelect?: (boxes: Box[], extend: boolean) => void;
+      it when asked, and naming the boxes of the canvas it changed in. */
+  onSelect?: (boxes: Box[], extend: boolean, holder: Box[]) => void;
 
   /** Called whenever a scenario's layout has been modified. */
   onChange?: () => void;
 
   /** Called to remove a scenario. */
   onRemoveScenario?: (layout: Layout) => void;
+
+  /** Called to copy a whole scenario. */
+  onCopyScenario?: (layout: Layout) => void;
 
   /** Called to remove the selected box from its scenario. */
   onRemoveBox?: () => void;
@@ -193,11 +196,20 @@ export class ScenarioBoard extends React.Component<Properties> {
 
   private renderControls(layout: Layout, index: number): JSX.Element {
     const count = this.props.component.layouts.length;
-    if(index === 0 || index >= count - 1) {
+    if(index >= count - 1) {
       return null;
+    }
+    const copy = (
+      <button style={ScenarioBoard.STYLE.control} title='Copy scenario'
+          onClick={() => this.props.onCopyScenario?.(layout)}>
+        {'\u29C9'}
+      </button>);
+    if(index === 0) {
+      return <div style={ScenarioBoard.STYLE.controls}>{copy}</div>;
     }
     return (
       <div style={ScenarioBoard.STYLE.controls}>
+        {copy}
         <button style={ScenarioBoard.STYLE.control} title='Move left'
             disabled={index <= 1}
             onClick={() => this.props.onMove?.(layout, -1)}>

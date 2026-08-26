@@ -97,8 +97,8 @@ interface Properties {
   selection: Box[];
 
   /** Called when the selection changes, adding to it rather than replacing
-      it when asked. */
-  onSelect?: (boxes: Box[], extend: boolean) => void;
+      it when asked, and naming the boxes of the canvas it changed in. */
+  onSelect?: (boxes: Box[], extend: boolean, holder: Box[]) => void;
 
   /** Called whenever the layout has been modified. */
   onChange?: () => void;
@@ -436,7 +436,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       this.hold(grasp.boxes);
       if(grasp.boxes.length === 1 &&
           this.props.selection.indexOf(grasp.boxes[0]) === -1) {
-        this.props.onSelect?.(grasp.boxes, false);
+        this.props.onSelect?.(grasp.boxes, false, this.props.boxes);
       }
       this.setState({gesture: Gesture.RESIZE, handle: grasp.handle,
         origin: point, current: point});
@@ -458,7 +458,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     })();
     this.hold(moving);
     if(!this.extend && !taken) {
-      this.props.onSelect?.([picked], false);
+      this.props.onSelect?.([picked], false, this.props.boxes);
     }
     this.setState({gesture: Gesture.DRAG, handle: null, origin: point,
       current: point});
@@ -569,7 +569,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           }
           return [picked];
         })();
-        this.props.onSelect?.(chosen, this.extend);
+        this.props.onSelect?.(chosen, this.extend, this.props.boxes);
       }
       return;
     }
@@ -580,7 +580,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const box = this.build(region);
     this.props.boxes.push(box);
     push(this.props.boxes, [box]);
-    this.props.onSelect?.([box], false);
+    this.props.onSelect?.([box], false, this.props.boxes);
     this.props.onChange?.();
   }
 

@@ -154,6 +154,6 @@ async function main() {
     `document.querySelector('[title="Delete section"]').disabled`), true);
 
   console.log(failures === 0 ? '\nsections work' : `\n${failures} FAILURES`);
-  process.exit(0);
+  process.exit(failures === 0 ? 0 : 1);
 }
 main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });

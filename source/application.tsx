@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { ensureBlank, keepsSelection, makeBlank, NodeProperties, prune,
-  ScenarioBoard, SectionPicker } from './editor';
+import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
+  keepsSelection, makeBlank, NodeProperties, prune, push, ScenarioBoard,
+  SectionPicker } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -65,6 +66,9 @@ export class Application extends React.Component<{}, State> {
     window.removeEventListener('mousedown', this.onMouseDown);
   }
 
+  private clipboard: Clipboard = null;
+  private target: Box[] = null;
+
   private onMouseDown = (event: MouseEvent) => {
     Application.release(event.target);
     if(this.state.selection.length === 0 || event.shiftKey ||
@@ -87,7 +91,18 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
-    if(this.state.selection.length === 0 || Application.isTyping()) {
+    if(Application.isTyping()) {
+      return;
+    }
+    if(event.ctrlKey || event.metaKey) {
+      if(event.key === 'c' || event.key === 'C') {
+        this.onCopy(event);
+      } else if(event.key === 'v' || event.key === 'V') {
+        this.onPaste(event);
+      }
+      return;
+    }
+    if(this.state.selection.length === 0) {
       return;
     }
     if(event.key === 'Escape') {
@@ -187,6 +202,7 @@ export class Application extends React.Component<{}, State> {
           selection={this.state.selection} onSelect={this.onSelect}
           onChange={this.onChange}
           onRemoveScenario={this.onRemoveScenario}
+          onCopyScenario={this.onCopyScenario}
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
           onCondition={this.onCondition}
           onProperties={this.onProperties} zoom={this.state.zoom}
@@ -333,7 +349,111 @@ export class Application extends React.Component<{}, State> {
     this.setState({revision: this.state.revision + 1});
   }
 
-  private onSelect = (nodes: Box[], extend: boolean) => {
+  private onCopy = (event: KeyboardEvent) => {
+    if(this.state.selection.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    this.clipboard = copyBoxes(this.state.selection);
+    this.setState({status: Application.count(this.state.selection.length,
+      'Copied')});
+  }
+
+  private onCopyScenario = (layout: Layout) => {
+    this.clipboard = copyScenario(layout);
+    this.setState({status: 'Copied a scenario.'});
+  }
+
+  private onPaste = (event: KeyboardEvent) => {
+    if(this.clipboard === null) {
+      return;
+    }
+    event.preventDefault();
+    if(this.clipboard.layout !== null) {
+      this.pasteScenario();
+      return;
+    }
+    this.pasteBoxes();
+  }
+
+  /** Puts copies of the boxes held into whichever canvas was last worked in,
+      leaving them selected so that they can be carried where they are
+      wanted. What is already there holds its ground and the copies give way
+      to it, since pasting is meant to add a box rather than to rearrange the
+      layout around one. Each paste is taken from where the last one landed,
+      so that pasting repeatedly walks copies down the canvas rather than
+      piling them all on the same spot. */
+  private pasteBoxes(): void {
+    const holder = this.pasteTarget();
+    if(holder === null) {
+      return;
+    }
+    const settled = holder.slice();
+    const pasted = copyOf(this.clipboard.boxes);
+    holder.push(...pasted);
+    push(holder, settled);
+    this.clipboard = copyBoxes(pasted);
+    ensureBlank(this.state.component);
+    this.setState({
+      selection: pasted,
+      revision: this.state.revision + 1,
+      status: Application.count(pasted.length, 'Pasted')
+    });
+  }
+
+  /** Returns the boxes a paste goes into, which is the canvas last worked
+      in, or the one holding the selection when that canvas has gone. */
+  private pasteTarget(): Box[] {
+    if(this.target !== null && this.holds(this.target)) {
+      return this.target;
+    }
+    if(this.state.selection.length === 0) {
+      return null;
+    }
+    return this.holderOf(this.state.selection[0]);
+  }
+
+  /** Returns whether a list of boxes is one this component holds. */
+  private holds(boxes: Box[]): boolean {
+    for(const layout of this.state.component.layouts) {
+      if(layout.boxes === boxes || layout.overlays.indexOf(boxes) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Puts a copy of the scenario held beside the one it was taken from, or
+      last of the scenarios that carry anything when that one has gone. The
+      default is never displaced: it is the scenario every other one is a
+      variant of. */
+  private pasteScenario(): void {
+    const layouts = this.state.component.layouts;
+    const source = layouts.indexOf(this.clipboard.origin);
+    const index = (() => {
+      if(source === -1) {
+        return Math.max(layouts.length - 1, 1);
+      }
+      return source + 1;
+    })();
+    layouts.splice(index, 0, this.clipboard.layout.clone());
+    ensureBlank(this.state.component);
+    this.setState({
+      selection: [],
+      revision: this.state.revision + 1,
+      status: 'Pasted a scenario.'
+    });
+  }
+
+  private static count(many: number, verb: string): string {
+    if(many === 1) {
+      return `${verb} a box.`;
+    }
+    return `${verb} ${many} boxes.`;
+  }
+
+  private onSelect = (nodes: Box[], extend: boolean, holder: Box[]) => {
+    this.target = holder;
     if(!extend) {
       this.setState({selection: nodes});
       return;

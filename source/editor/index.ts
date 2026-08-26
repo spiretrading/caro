@@ -1,4 +1,5 @@
-export { boxAt, extentOf, push } from './arrange';
+export { boxAt, copyOf, extentOf, push } from './arrange';
+export { Clipboard, copyBoxes, copyScenario } from './clipboard';
 export { LayoutCanvas } from './layout_canvas';
 export { NodeProperties } from './node_properties';
 export { PropertiesEditor } from './properties_editor';

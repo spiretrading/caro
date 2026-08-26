@@ -1,5 +1,6 @@
 const {Box, SizePolicy} = require('./cjs/layout/index.js');
-const {boxAt, extentOf, push} = require('./cjs/editor/arrange.js');
+const {boxAt, copyOf, extentOf, push} =
+  require('./cjs/editor/arrange.js');
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -85,6 +86,20 @@ check('a box at the corner is not pushed off the canvas',
   cornered.x >= 0 && cornered.y >= 0, true);
 check('and the box being moved is still where it was put',
   place(intruder), '0,0');
+
+// A copy sits clear of what it was taken from, and a set of them keeps its
+// arrangement.
+const original = [box('A', 40, 40, 100, 100), box('B', 200, 40, 60, 80)];
+const copies = copyOf(original);
+check('a copy is offset from what it was taken from',
+  copies.map(place), ['60,60', '220,60']);
+check('keeping the space between them',
+  copies[1].x - copies[0].x, original[1].x - original[0].x);
+check('and its size and name', copies.map(
+  box => `${box.name} ${box.width}x${box.height}`),
+  ['A 100x100', 'B 60x80']);
+copies[0].width = 1;
+check('a copy is its own box', original[0].width, 100);
 
 const banner = failures === 0 ? 'boxes give way as they should' :
   `${failures} FAILURES`;

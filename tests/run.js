@@ -69,11 +69,12 @@ async function main() {
       }
       return lines[lines.length - 1];
     })();
-    if(run.status !== 0) {
+    const beaten = run.status !== 0 || /^\d+ FAILURES$/.test(last);
+    if(beaten) {
       failed.push({suite, output: run.stdout, error: run.stderr});
     }
     const mark = (() => {
-      if(run.status !== 0) {
+      if(beaten) {
         return 'FAIL';
       }
       if(last.startsWith('skipped')) {

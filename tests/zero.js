@@ -115,6 +115,6 @@ async function main() {
 
   console.log(failures === 0 ? '\nzero sizing works' :
     `\n${failures} FAILURES`);
-  process.exit(0);
+  process.exit(failures === 0 ? 0 : 1);
 }
 main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });
