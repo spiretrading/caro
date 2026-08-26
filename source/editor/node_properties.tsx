@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { Node, Reference, SizePolicy } from '../layout';
+import { Box, SizePolicy } from '../layout';
 
 interface Properties {
 
   /** The boxes currently selected, empty when none are. */
-  selection: Node[];
+  selection: Box[];
 
   /** Called when a property of the node changes. */
   onChange?: () => void;
@@ -36,7 +36,7 @@ export class NodeProperties extends React.Component<Properties> {
     return (
       <div style={NodeProperties.STYLE.panel} data-keeps-selection=''>
         <div style={NodeProperties.STYLE.heading}>Box</div>
-        {node instanceof Reference &&
+        {
           <label style={NodeProperties.STYLE.field}>
             <span style={NodeProperties.STYLE.caption}>Name</span>
             <input style={NodeProperties.STYLE.input} value={node.name}
@@ -88,7 +88,7 @@ export class NodeProperties extends React.Component<Properties> {
   }
 
   private onName = (event: React.ChangeEvent<HTMLInputElement>) => {
-    (this.props.selection[0] as Reference).name = event.target.value;
+    this.props.selection[0].name = event.target.value;
     this.props.onChange?.();
   }
 

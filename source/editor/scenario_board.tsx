@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Component, Layout, Node } from '../layout';
+import { Box, Component, Layout } from '../layout';
 import { LayoutCanvas } from './layout_canvas';
 import { PropertiesEditor } from './properties_editor';
 
@@ -16,7 +16,7 @@ interface Properties {
   component: Component;
 
   /** The boxes currently selected, empty when none are. */
-  selection: Node[];
+  selection: Box[];
 
   /** How much the canvases are magnified, 1 being their literal size. */
   zoom: number;
@@ -26,7 +26,7 @@ interface Properties {
 
   /** Called when the selection changes, adding to it rather than replacing
       it when asked. */
-  onSelect?: (nodes: Node[], extend: boolean) => void;
+  onSelect?: (boxes: Box[], extend: boolean) => void;
 
   /** Called whenever a scenario's layout has been modified. */
   onChange?: () => void;
@@ -52,9 +52,6 @@ interface Properties {
   /** Called to remove one of a scenario's layers. */
   onRemoveLayer?: (layout: Layout, layer: number) => void;
 
-  /** Called when a cancelled gesture puts back an earlier root, naming the
-      layer it belongs to and -1 for the layout itself. */
-  onRestore?: (layout: Layout, layer: number, root: Node) => void;
 }
 
 /** Displays every scenario of a component side by side. */
@@ -134,10 +131,10 @@ export class ScenarioBoard extends React.Component<Properties> {
           {this.renderCondition(layout, index)}
           {this.renderControls(layout, index)}
         </div>
-        <LayoutCanvas root={layout.root} selection={this.props.selection}
-          zoom={this.props.zoom} onSelect={this.props.onSelect}
-          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}
-          onRestore={root => this.props.onRestore?.(layout, -1, root)}/>
+        <LayoutCanvas boxes={layout.boxes}
+          selection={this.props.selection} zoom={this.props.zoom}
+          onSelect={this.props.onSelect} onChange={this.props.onChange}
+          onRemove={this.props.onRemoveBox}/>
         {layout.overlays.map((overlay, layer) =>
           this.renderLayer(layout, overlay, layer))}
         {this.renderAddLayer(layout, index)}
@@ -145,7 +142,7 @@ export class ScenarioBoard extends React.Component<Properties> {
       </div>);
   }
 
-  private renderLayer(layout: Layout, overlay: Node,
+  private renderLayer(layout: Layout, overlay: Box[],
       layer: number): JSX.Element {
     return (
       <div key={`layer-${layer}`} style={ScenarioBoard.STYLE.layer}>
@@ -156,10 +153,9 @@ export class ScenarioBoard extends React.Component<Properties> {
             {'\u00D7'}
           </button>
         </div>
-        <LayoutCanvas root={overlay} selection={this.props.selection}
+        <LayoutCanvas boxes={overlay} selection={this.props.selection}
           zoom={this.props.zoom} onSelect={this.props.onSelect}
-          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}
-          onRestore={root => this.props.onRestore?.(layout, layer, root)}/>
+          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}/>
       </div>);
   }
 

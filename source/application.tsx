@@ -1,9 +1,7 @@
 import * as React from 'react';
-import { contains, detach, ensureBlank, keepsSelection, makeBlank,
-  NodeProperties, normalize, prune, ScenarioBoard,
-  SectionPicker } from './editor';
-import { Board, Component, Container, Layout, Node, Orientation,
-  SizePolicy } from './layout';
+import { ensureBlank, keepsSelection, makeBlank, NodeProperties, prune,
+  ScenarioBoard, SectionPicker } from './editor';
+import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
 
@@ -14,7 +12,7 @@ interface State {
   file: SpecificationFile;
   board: Board;
   component: Component;
-  selection: Node[];
+  selection: Box[];
   zoom: number;
   revision: number;
   status: string;
@@ -190,7 +188,7 @@ export class Application extends React.Component<{}, State> {
           onCondition={this.onCondition}
           onProperties={this.onProperties} zoom={this.state.zoom}
           onZoom={this.onZoom} onAddLayer={this.onAddLayer}
-          onRemoveLayer={this.onRemoveLayer} onRestore={this.onRestore}/>);
+          onRemoveLayer={this.onRemoveLayer}/>);
     }
     return (
       <div style={Application.STYLE.placeholder}>
@@ -332,7 +330,7 @@ export class Application extends React.Component<{}, State> {
     this.setState({revision: this.state.revision + 1});
   }
 
-  private onSelect = (nodes: Node[], extend: boolean) => {
+  private onSelect = (nodes: Box[], extend: boolean) => {
     if(!extend) {
       this.setState({selection: nodes});
       return;
@@ -350,42 +348,8 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onChange = () => {
-    for(const layout of this.state.component.layouts) {
-      normalize(layout.root);
-    }
     ensureBlank(this.state.component);
     this.setState({revision: this.state.revision + 1});
-  }
-
-  private onRemove = () => {
-    const roots = [] as Container[];
-    for(const node of this.state.selection) {
-      const root = this.rootOf(node);
-      if(root === null) {
-        continue;
-      }
-      detach(root, node);
-      if(roots.indexOf(root) === -1) {
-        roots.push(root);
-      }
-    }
-    if(roots.length === 0) {
-      return;
-    }
-    for(const root of roots) {
-      normalize(root);
-    }
-    const status = (() => {
-      if(this.state.selection.length === 1) {
-        return 'Removed a box.';
-      }
-      return `Removed ${this.state.selection.length} boxes.`;
-    })();
-    this.setState({
-      selection: [],
-      revision: this.state.revision + 1,
-      status
-    });
   }
 
   private onSave = async () => {
@@ -403,21 +367,8 @@ export class Application extends React.Component<{}, State> {
     }
   }
 
-  private rootOf(node: Node): Container {
-    for(const layout of this.state.component.layouts) {
-      for(const tree of [layout.root, ...layout.overlays]) {
-        const root = tree as Container;
-        if(contains(root, node)) {
-          return root;
-        }
-      }
-    }
-    return null;
-  }
-
   private onAddLayer = (layout: Layout) => {
-    layout.overlays.push(new Container(Orientation.COLUMN, 0, 0,
-      SizePolicy.FILL, SizePolicy.FILL, []));
+    layout.overlays.push([]);
     this.setState({
       revision: this.state.revision + 1,
       status: `Added layer ${layout.overlays.length}.`
@@ -433,12 +384,46 @@ export class Application extends React.Component<{}, State> {
     });
   }
 
-  private onRestore = (layout: Layout, layer: number, root: Node) => {
-    if(layer === -1) {
-      layout.root = root;
+  private onRemove = () => {
+    let removed = 0;
+    for(const box of this.state.selection) {
+      const holder = this.holderOf(box);
+      if(holder === null) {
+        continue;
+      }
+      holder.splice(holder.indexOf(box), 1);
+      removed += 1;
+    }
+    if(removed === 0) {
       return;
     }
-    layout.overlays[layer] = root;
+    const status = (() => {
+      if(removed === 1) {
+        return 'Removed a box.';
+      }
+      return `Removed ${removed} boxes.`;
+    })();
+    this.setState({
+      selection: [],
+      revision: this.state.revision + 1,
+      status
+    });
+  }
+
+  /** Returns the list of boxes a box belongs to, which is a layout's own or
+      one of its layers'. */
+  private holderOf(box: Box): Box[] {
+    for(const layout of this.state.component.layouts) {
+      if(layout.boxes.indexOf(box) !== -1) {
+        return layout.boxes;
+      }
+      for(const layer of layout.overlays) {
+        if(layer.indexOf(box) !== -1) {
+          return layer;
+        }
+      }
+    }
+    return null;
   }
 
   private static readonly STYLE = {

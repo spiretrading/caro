@@ -1,4 +1,4 @@
-import { Node } from './node';
+import { Box } from './box';
 
 /** A single arrangement of a component, used when its condition is met. */
 export class Layout {
@@ -9,24 +9,25 @@ export class Layout {
   /** The properties applied to this layout and to the boxes it names. */
   public properties: string;
 
-  /** The root of the layout tree. */
-  public root: Node;
+  /** The boxes making up the layout. */
+  public boxes: Box[];
 
-  /** The trees superimposed over the root, in ascending layer order. */
-  public overlays: Node[];
+  /** The layers superimposed on the layout, in ascending order. */
+  public overlays: Box[][];
 
-  constructor(condition: string, properties: string, root: Node,
-      overlays: Node[]) {
+  constructor(condition: string, properties: string, boxes: Box[],
+      overlays: Box[][]) {
     this.condition = condition;
     this.properties = properties;
-    this.root = root;
+    this.boxes = boxes;
     this.overlays = overlays;
   }
 
   /** Returns a deep copy of this layout. */
   public clone(): Layout {
-    return new Layout(this.condition, this.properties, this.root.clone(),
-      this.overlays.map(overlay => overlay.clone()));
+    return new Layout(this.condition, this.properties,
+      this.boxes.map(box => box.clone()),
+      this.overlays.map(layer => layer.map(box => box.clone())));
   }
 
   /** Converts this layout to its JSON representation. */
@@ -34,15 +35,17 @@ export class Layout {
     return {
       condition: this.condition,
       properties: this.properties,
-      root: this.root.toObject(),
-      overlays: this.overlays.map(overlay => overlay.toObject())
+      boxes: this.boxes.map(box => box.toObject()),
+      overlays: this.overlays.map(
+        layer => layer.map(box => box.toObject()))
     };
   }
 
   /** Builds a layout from its JSON representation. */
   public static fromObject(value: any): Layout {
     return new Layout(value.condition, value.properties,
-      Node.fromObject(value.root),
-      value.overlays.map((overlay: any) => Node.fromObject(overlay)));
+      value.boxes.map((box: any) => Box.fromObject(box)),
+      (value.overlays ?? []).map(
+        (layer: any) => layer.map((box: any) => Box.fromObject(box))));
   }
 }
