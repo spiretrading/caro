@@ -57,7 +57,7 @@ format, asking where to put a specification that has no file yet.
 
     Board
       name: string
-      components: Component[]        innermost first
+      components: Component[]        outermost first
         name: string                 'Element:Name' or 'Name'
         layouts: Layout[]            ascending priority
           condition: string          empty for the default
@@ -89,9 +89,23 @@ not inherit. This differs from component scenarios, which accumulate.
 ## Status
 
 The app opens on an empty specification, ready to draw, with New, Open and
-Save on the toolbar.
+Save on the toolbar. Open and Save work on a single file rather than a folder.
 
-A component's scenarios are laid out side by side, as the XD boards draw them.
+The section picker names the section being edited and chooses among the
+others: the field renames, the chevron opens the list. It is one control
+rather than a dropdown paired with a text field, which showed the same name
+twice, and rather than an input backed by a datalist, which cannot tell
+picking a name from typing one, and section names may repeat. Controls beside
+it add and delete a section; a new one is inserted after the selected section,
+next to whatever it was added for. Sections are edited one at a time, so their
+order is never on screen and there is nothing to reorder.
+
+Sections run outermost first, so a specification opens on its page rather than
+on some leaf buried inside it. The legacy format lists them the other way
+round, innermost first, because that is the order the cards are stacked down
+an XD board; the importer reverses them.
+
+A section's scenarios are laid out side by side, as the XD boards draw them.
 The leftmost is the default: it always exists, carries no condition, and
 cannot be moved or deleted, because evaluation runs right to left and takes
 the first match, so anything to the default's left could never be reached.

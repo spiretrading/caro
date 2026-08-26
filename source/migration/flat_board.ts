@@ -32,13 +32,18 @@ export function isFlatBoard(value: any): boolean {
     (layout.frame !== undefined || layout.boxes !== undefined);
 }
 
-/** Converts a board in the legacy flat box format into a Board. */
+/** Converts a board in the legacy flat box format into a Board, reversing
+    the order of its components: the legacy format lists them innermost
+    first because that is how the drawings are stacked, whereas an editor
+    starts from the outermost and works inwards. */
 export function importFlatBoard(value: any): Board {
-  return new Board(value.name, value.components.map((component: any) =>
+  const components = value.components.map((component: any) =>
     new Component(component.name, component.layouts.map((layout: any) =>
       new Layout(layout.condition, layout.constraints,
         importFrame(layout.frame ?? {boxes: layout.boxes}),
-        (layout.overlays ?? []).map(importFrame))))));
+        (layout.overlays ?? []).map(importFrame)))));
+  components.reverse();
+  return new Board(value.name, components);
 }
 
 /** Converts a single flat frame of boxes into a layout tree, always rooted
