@@ -21,10 +21,9 @@ export function makeBlank(): Layout {
 /** Keeps a blank scenario waiting past the default of a component. */
 export function ensureBlank(component: Component): void {
   const layouts = component.layouts;
-  if(layouts.length > 1 && isBlank(layouts[layouts.length - 1])) {
-    return;
+  while(layouts.length < 2 || !isBlank(layouts[layouts.length - 1])) {
+    layouts.push(makeBlank());
   }
-  layouts.push(makeBlank());
 }
 
 /** Returns a copy of a board without the blank scenarios waiting at the end

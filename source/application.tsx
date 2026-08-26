@@ -108,6 +108,21 @@ export class Application extends React.Component<{}, State> {
             {this.state.board.components.map((component, index) =>
               <option key={index} value={index}>{component.name}</option>)}
           </select>}
+        {this.state.component !== null &&
+          <input style={Application.STYLE.name}
+            value={this.state.component.name} placeholder='Section:Name'
+            onChange={this.onRename}/>}
+        {this.state.board !== null &&
+          <button style={Application.STYLE.control} title='Add a section'
+              onClick={this.onAddSection}>
+            +
+          </button>}
+        {this.state.board !== null &&
+          <button style={Application.STYLE.control} title='Delete section'
+              disabled={this.state.board.components.length <= 1}
+              onClick={this.onRemoveSection}>
+            {'\u00D7'}
+          </button>}
         <span style={Application.STYLE.status}>{this.state.status}</span>
       </div>);
   }
@@ -238,6 +253,49 @@ export class Application extends React.Component<{}, State> {
     this.setState({revision: this.state.revision + 1});
   }
 
+  private onAddSection = () => {
+    const components = this.state.board.components;
+    const component = new Component(
+      Application.nextName(this.state.board), []);
+    ensureBlank(component);
+    components.splice(this.componentIndex() + 1, 0, component);
+    this.setState({
+      component,
+      selection: null,
+      revision: this.state.revision + 1,
+      status: `Added ${component.name}.`
+    });
+  }
+
+  private onRemoveSection = () => {
+    const components = this.state.board.components;
+    if(components.length <= 1) {
+      return;
+    }
+    const index = this.componentIndex();
+    components.splice(index, 1);
+    const component = components[Math.min(index, components.length - 1)];
+    this.setState({
+      component,
+      selection: null,
+      revision: this.state.revision + 1,
+      status: 'Removed a section.'
+    });
+  }
+
+  private onRename = (event: React.ChangeEvent<HTMLInputElement>) => {
+    this.state.component.name = event.target.value;
+    this.setState({revision: this.state.revision + 1});
+  }
+
+  private static nextName(board: Board): string {
+    let index = 1;
+    while(board.find(`Section${index}`) !== null) {
+      index += 1;
+    }
+    return `Section${index}`;
+  }
+
   private onCondition = (layout: Layout, condition: string) => {
     layout.condition = condition;
     ensureBlank(this.state.component);
@@ -331,6 +389,22 @@ export class Application extends React.Component<{}, State> {
       padding: '6px',
       fontSize: '13px',
       maxWidth: '260px'
+    },
+    name: {
+      width: '160px',
+      padding: '6px',
+      fontSize: '13px',
+      fontFamily: 'inherit',
+      border: '1px solid #C8C8C8'
+    },
+    control: {
+      width: '28px',
+      height: '28px',
+      padding: 0,
+      fontSize: '14px',
+      border: '1px solid #C8C8C8',
+      backgroundColor: '#FFFFFF',
+      cursor: 'pointer'
     },
     button: {
       padding: '8px 12px',
