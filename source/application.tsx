@@ -14,6 +14,7 @@ interface State {
   board: Board;
   component: Component;
   selection: Box[];
+  active: Box[];
   zoom: number;
   revision: number;
   status: string;
@@ -30,6 +31,7 @@ export class Application extends React.Component<{}, State> {
       board,
       component,
       selection: [],
+      active: null,
       zoom: 1,
       revision: 0,
       status: ''
@@ -67,7 +69,6 @@ export class Application extends React.Component<{}, State> {
   }
 
   private clipboard: Clipboard = null;
-  private target: Box[] = null;
 
   private onMouseDown = (event: MouseEvent) => {
     Application.release(event.target);
@@ -75,7 +76,7 @@ export class Application extends React.Component<{}, State> {
         keepsSelection(event.target)) {
       return;
     }
-    this.setState({selection: []});
+    this.setState({selection: [], active: null});
   }
 
   private static release(target: EventTarget): void {
@@ -106,7 +107,7 @@ export class Application extends React.Component<{}, State> {
       return;
     }
     if(event.key === 'Escape') {
-      this.setState({selection: []});
+      this.setState({selection: [], active: null});
       return;
     }
     if(event.key !== 'Delete' && event.key !== 'Backspace') {
@@ -199,7 +200,8 @@ export class Application extends React.Component<{}, State> {
     if(this.state.component !== null) {
       return (
         <ScenarioBoard component={this.state.component}
-          selection={this.state.selection} onSelect={this.onSelect}
+          selection={this.state.selection} active={this.state.active}
+          onSelect={this.onSelect}
           onChange={this.onChange}
           onRemoveScenario={this.onRemoveScenario}
           onCopyScenario={this.onCopyScenario}
@@ -227,6 +229,7 @@ export class Application extends React.Component<{}, State> {
       board,
       component,
       selection: [],
+      active: null,
       status: 'Started a new specification.'
     });
   }
@@ -258,7 +261,8 @@ export class Application extends React.Component<{}, State> {
       if(component !== null) {
         ensureBlank(component);
       }
-      this.setState({file, board, component, selection: [], status});
+      this.setState({file, board, component, selection: [], active: null,
+      status});
     } catch(error) {
       this.setState({status: `${error}`});
     }
@@ -266,7 +270,7 @@ export class Application extends React.Component<{}, State> {
 
   private onSelectSection = (component: Component) => {
     ensureBlank(component);
-    this.setState({component, selection: []});
+    this.setState({component, selection: [], active: null});
   }
 
   private onRemoveScenario = (layout: Layout) => {
@@ -278,6 +282,7 @@ export class Application extends React.Component<{}, State> {
     layouts.splice(index, 1);
     this.setState({
       selection: [],
+      active: null,
       revision: this.state.revision + 1,
       status: 'Removed a scenario.'
     });
@@ -304,6 +309,7 @@ export class Application extends React.Component<{}, State> {
     this.setState({
       component,
       selection: [],
+      active: null,
       revision: this.state.revision + 1,
       status: `Added ${component.name}.`
     });
@@ -320,6 +326,7 @@ export class Application extends React.Component<{}, State> {
     this.setState({
       component,
       selection: [],
+      active: null,
       revision: this.state.revision + 1,
       status: 'Removed a section.'
     });
@@ -404,8 +411,8 @@ export class Application extends React.Component<{}, State> {
   /** Returns the boxes a paste goes into, which is the canvas last worked
       in, or the one holding the selection when that canvas has gone. */
   private pasteTarget(): Box[] {
-    if(this.target !== null && this.holds(this.target)) {
-      return this.target;
+    if(this.state.active !== null && this.holds(this.state.active)) {
+      return this.state.active;
     }
     if(this.state.selection.length === 0) {
       return null;
@@ -440,6 +447,7 @@ export class Application extends React.Component<{}, State> {
     ensureBlank(this.state.component);
     this.setState({
       selection: [],
+      active: null,
       revision: this.state.revision + 1,
       status: 'Pasted a scenario.'
     });
@@ -453,9 +461,8 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onSelect = (nodes: Box[], extend: boolean, holder: Box[]) => {
-    this.target = holder;
     if(!extend) {
-      this.setState({selection: nodes});
+      this.setState({selection: nodes, active: holder});
       return;
     }
     const selection = [...this.state.selection];
@@ -467,7 +474,7 @@ export class Application extends React.Component<{}, State> {
         selection.splice(index, 1);
       }
     }
-    this.setState({selection});
+    this.setState({selection, active: holder});
   }
 
   private onChange = () => {
@@ -502,6 +509,7 @@ export class Application extends React.Component<{}, State> {
     layout.overlays.splice(layer, 1);
     this.setState({
       selection: [],
+      active: null,
       revision: this.state.revision + 1,
       status: 'Removed a layer.'
     });
@@ -528,6 +536,7 @@ export class Application extends React.Component<{}, State> {
     })();
     this.setState({
       selection: [],
+      active: null,
       revision: this.state.revision + 1,
       status
     });

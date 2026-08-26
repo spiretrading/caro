@@ -123,8 +123,13 @@ async function main(){
   check('the clone carries the condition it was copied from, to be edited',
     conditions, ['', '']);
 
-  // Boxes pasted into a scenario that has none.
+  // The canvas a paste goes into says so, rather than being remembered.
+  const marked = () => evaluate(`Array.from(
+    document.querySelectorAll('[data-canvas]')).map(
+      c => getComputedStyle(c).outlineColor === 'rgb(104, 75, 199)').join()`);
   await tap(at(140, 90));
+  check('the canvas being worked in is the one marked', await marked(),
+    'true,false,false');
   await copy();
   const blank = await evaluate(`(() => {
     const r = document.querySelectorAll('[data-canvas]')[2]
@@ -132,6 +137,8 @@ async function main(){
     return {x: r.left + 60, y: r.top + 60};
   })()`);
   await tap(blank);
+  check('and pressing another moves the mark to it', await marked(),
+    'false,false,true');
   await paste();
   check('pressing a canvas is enough to say where a paste goes',
     await show(2, 'into the blank'), '60,60 200x100 SEL');

@@ -96,6 +96,10 @@ interface Properties {
   /** The boxes currently selected, empty when none are. */
   selection: Box[];
 
+  /** Whether this is the canvas being worked in, the one a paste goes
+      into. */
+  active: boolean;
+
   /** Called when the selection changes, adding to it rather than replacing
       it when asked, and naming the boxes of the canvas it changed in. */
   onSelect?: (boxes: Box[], extend: boolean, holder: Box[]) => void;
@@ -144,6 +148,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           data-keeps-selection=''
           style={{...LayoutCanvas.STYLE.container, zoom: this.props.zoom,
             width: `${extent.width}px`, height: `${extent.height}px`,
+            ...this.activeStyle(),
             ...LayoutCanvas.cursorFor(this.state.handle)}}
           onMouseDown={this.onMouseDown} onMouseMove={this.onHover}
           onMouseLeave={this.onLeave}>
@@ -183,6 +188,19 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private count: number;
   private extend: boolean;
   private origin: Point;
+
+  /** Returns the marking that sets the canvas being worked in apart from
+      the rest. An outline is used rather than a border, since the border is
+      measured when a place on screen is turned into a place in the layout.
+      Both markings name the same properties and differ only in their values,
+      because a property dropped between renders is cleared rather than put
+      back to what the container asked for. */
+  private activeStyle() {
+    if(!this.props.active) {
+      return LayoutCanvas.STYLE.idle;
+    }
+    return LayoutCanvas.STYLE.active;
+  }
 
   /** Returns how much room the canvas needs, never less than its floor. */
   private extent() {
@@ -799,6 +817,14 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     selected: {
       outline: '2px solid #684BC7',
       outlineOffset: '-2px'
+    },
+    active: {
+      outline: '2px solid #684BC7',
+      outlineOffset: '1px'
+    },
+    idle: {
+      outline: '2px solid transparent',
+      outlineOffset: '1px'
     },
     aligned: {
       outline: '2px solid #E63F44',

@@ -18,6 +18,9 @@ interface Properties {
   /** The boxes currently selected, empty when none are. */
   selection: Box[];
 
+  /** The boxes of the canvas being worked in, null when none has been. */
+  active: Box[];
+
   /** How much the canvases are magnified, 1 being their literal size. */
   zoom: number;
 
@@ -136,6 +139,7 @@ export class ScenarioBoard extends React.Component<Properties> {
         </div>
         <LayoutCanvas boxes={layout.boxes}
           selection={this.props.selection} zoom={this.props.zoom}
+          active={layout.boxes === this.props.active}
           onSelect={this.props.onSelect} onChange={this.props.onChange}
           onRemove={this.props.onRemoveBox}/>
         {layout.overlays.map((overlay, layer) =>
@@ -157,8 +161,9 @@ export class ScenarioBoard extends React.Component<Properties> {
           </button>
         </div>
         <LayoutCanvas boxes={overlay} selection={this.props.selection}
-          zoom={this.props.zoom} onSelect={this.props.onSelect}
-          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}/>
+          zoom={this.props.zoom} active={overlay === this.props.active}
+          onSelect={this.props.onSelect} onChange={this.props.onChange}
+          onRemove={this.props.onRemoveBox}/>
       </div>);
   }
 

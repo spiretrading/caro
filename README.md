@@ -50,9 +50,9 @@ emits.
 `npm start` serves the app on `http://localhost:8080`, rebuilding as the
 source changes. It must be served over localhost or https: the File System
 Access API is unavailable on `file://`, and is only implemented by Chrome and
-Edge. `npm run build` writes `application/bundle.js` instead, which is a
-snapshot rather than a live build. The toolbar carries the time the build on
-screen was compiled at, so which of the two is running is never in doubt.
+Edge. Both it and `npm run build` write `application/bundle.js`, so that
+folder always holds the build that is running rather than whichever one was
+last made by hand. The toolbar carries the time it was compiled at.
 
 ## Testing
 
@@ -267,7 +267,12 @@ so there is no loop left to damp.
 
 Ctrl+C copies whatever is selected and Ctrl+V puts it down again, in the
 canvas last worked in rather than the one it came from, so a box is carried
-from one scenario to another by pressing the canvas it is wanted in. A copy
+from one scenario to another by pressing the canvas it is wanted in. That
+canvas is outlined, since where the next paste lands should be on screen
+rather than remembered. A paste is not placed under the cursor: pressing a
+key says nothing about where the mouse happens to be resting, and a pasted
+box gives way to what is already there, so it could not be promised the spot
+anyway. A copy
 lands offset from what it was taken from and is left selected, ready to be
 dragged where it belongs. What is already there holds its ground and the copy
 gives way to it, which is the reverse of drawing: a box drawn on top of
