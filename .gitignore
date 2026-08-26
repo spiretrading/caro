@@ -2,3 +2,4 @@ node_modules/
 application/bundle.js
 application/bundle.js.map
 *.log
+tests/cjs/

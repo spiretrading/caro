@@ -6,7 +6,8 @@
   "scripts": {
     "compile": "node node_modules/typescript/bin/tsc -p .",
     "build": "node node_modules/webpack/bin/webpack.js",
-    "start": "node node_modules/webpack-dev-server/bin/webpack-dev-server.js"
+    "start": "node node_modules/webpack-dev-server/bin/webpack-dev-server.js",
+    "test": "node tests/run.js"
   },
   "devDependencies": {
     "@types/react": "17.0.80",
