@@ -201,6 +201,86 @@ async function main(){
   check('with a rule of white between the ring and the fill', ring.rule,
     true);
 
+  // The arrow keys walk the tree the way they walk one anywhere else.
+  const press = async key => {
+    for(const type of ['keyDown', 'keyUp']) {
+      await send('Input.dispatchKeyEvent', {type, key, code: key,
+        windowsVirtualKeyCode: {ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37,
+          ArrowRight: 39, Home: 36, End: 35, Enter: 13}[key] || 0,
+        nativeVirtualKeyCode: {ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37,
+          ArrowRight: 39, Home: 36, End: 35, Enter: 13}[key] || 0});
+    }
+    await pause(220);
+  };
+  const focused = () => evaluate(
+    `document.activeElement.textContent.trim()`);
+  const labelAt = async index =>
+    (await rows())[index].replace(/^\.+/, '');
+  await evaluate(`document.querySelectorAll(
+    '[data-outline] div > button:nth-child(2)')[0].focus()`);
+  await pause(200);
+  check('the first row takes the focus', await focused(), await labelAt(0));
+  await press('ArrowDown');
+  check('down steps to the next row', await focused(), await labelAt(1));
+  await press('ArrowUp');
+  check('and up steps back', await focused(), await labelAt(0));
+  const spread = (await rows()).length;
+  await press('ArrowLeft');
+  check('left shuts an open row', (await rows()).length < spread, true);
+  await press('ArrowRight');
+  check('right opens it again', (await rows()).length, spread);
+  await press('ArrowRight');
+  check('and right again steps into it', await focused(), await labelAt(1));
+  await press('ArrowLeft');
+  await press('ArrowLeft');
+  check('left steps back out to what holds a row once it is shut',
+    await focused(), await labelAt(0));
+  await press('End');
+  check('end goes to the last row', await focused(),
+    await labelAt((await rows()).length - 1));
+  await press('Home');
+  check('and home to the first', await focused(), await labelAt(0));
+
+  // Whatever the walk lands on becomes the current item, the same as a
+  // press would make it.
+  const focusIndex = () => evaluate(`(() => {
+    const rows = Array.from(document.querySelectorAll(
+      '[data-outline] div > button:nth-child(2)'));
+    return rows.indexOf(document.activeElement);
+  })()`);
+  const noteAt = index => evaluate(`(() => {
+    const notes = Array.from(document.querySelectorAll(
+      '[data-outline] div > span'));
+    return notes[${index}].textContent;
+  })()`);
+  const workingRow = () => evaluate(`(() => {
+    const rows = Array.from(document.querySelectorAll(
+      '[data-outline] div > button:nth-child(2)')).map(b => b.parentElement);
+    return rows.findIndex(r =>
+      getComputedStyle(r).backgroundColor === 'rgb(240, 236, 250)');
+  })()`);
+  check('the section walked to is the one edited', await named(), 'Main');
+  await press('ArrowDown');
+  await press('ArrowRight');
+  await press('ArrowRight');
+  const walked = await focusIndex();
+  check('walking on to a box selects it in the canvas', await selected(),
+    [await noteAt(walked)]);
+  await press('ArrowUp');
+  check('and back to a scenario works its canvas', await workingRow(),
+    await focusIndex());
+  check('leaving nothing selected', await selected(), []);
+  await press('End');
+  check('walking into another section switches to it', await named(),
+    'Section1');
+  await press('Home');
+  await press('ArrowLeft');
+  const shut = await rows();
+  await press('ArrowDown');
+  check('down steps over a shut row rather than opening it', await rows(),
+    shut);
+  check('landing on the row after it', await focused(), await labelAt(1));
+
   const banner = failures === 0 ? 'the outline reaches what the canvas cannot'
     : `${failures} FAILURES`;
   console.log('');

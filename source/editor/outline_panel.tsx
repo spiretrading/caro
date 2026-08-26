@@ -13,6 +13,51 @@ const WIDTH = 210;
 const NARROWEST = 120;
 const WIDEST = 520;
 
+/** A row of the tree as it stands, one of the sections, scenarios, layers
+    and boxes on show once the folded ones are left out. */
+interface Entry {
+
+  /** What the row can be opened or shut by, and is remembered open by. */
+  node: object;
+
+  /** The section the row belongs to, which a press switches to. */
+  component: Component;
+
+  /** The box the row stands for, null for every other kind of row. */
+  box: Box;
+
+  /** The row this one is folded away into, null at the top. */
+  parent: object;
+
+  /** How many levels in the row sits. */
+  depth: number;
+
+  /** What the row is called. */
+  label: string;
+
+  /** What the row says of itself when the cursor rests on it. */
+  title: string;
+
+  /** What is written to the right of the label. */
+  note: React.ReactNode;
+
+  /** Whether the row has nothing folded away inside it. */
+  leaf: boolean;
+
+  /** Whether the row is open. */
+  open: boolean;
+
+  /** How the row is marked out from the rest. */
+  style: object;
+
+  /** What the row does when the walk lands on it, making it the current
+      item without folding anything. */
+  visit: () => void;
+
+  /** What a press on the row does besides moving the focus to it. */
+  choose: () => void;
+}
+
 interface Properties {
 
   /** The sections of the specification, outermost first. */
@@ -40,6 +85,7 @@ interface Properties {
 interface State {
   open: Set<object>;
   width: number;
+  focus: number;
 }
 
 /** Lists a whole specification as a tree of sections, scenarios, layers and
@@ -48,18 +94,23 @@ interface State {
 export class OutlinePanel extends React.Component<Properties, State> {
   constructor(props: Properties) {
     super(props);
-    this.state = {open: new Set<object>(), width: WIDTH};
+    this.state = {open: new Set<object>(), width: WIDTH, focus: -1};
     this.grabbed = 0;
     this.held = 0;
+    this.rows = [];
+    this.settled = -1;
+    this.walked = false;
   }
 
   public render(): JSX.Element {
+    const entries = this.entries();
+    this.rows = [];
     return (
       <div style={{...OutlinePanel.STYLE.panel,
           width: `${this.state.width}px`}} data-keeps-selection=''
-          data-outline=''>
+          data-outline='' onKeyDown={this.onKeyDown}>
         <div style={OutlinePanel.STYLE.tree}>
-          {this.props.sections.map(this.renderSection)}
+          {entries.map(this.renderRow)}
         </div>
         <div style={OutlinePanel.STYLE.grip} data-grip=''
           title='Drag to widen' onMouseDown={this.onGrab}/>
@@ -70,12 +121,268 @@ export class OutlinePanel extends React.Component<Properties, State> {
     this.reveal(this.props.component);
   }
 
+  public componentDidUpdate(previous: Properties): void {
+    const walked = this.walked;
+    this.walked = false;
+    if(previous.component !== this.props.component && !walked) {
+      this.reveal(this.props.component);
+    }
+    if(this.state.focus === this.settled) {
+      return;
+    }
+    this.settled = this.state.focus;
+    const row = this.rows[this.state.focus];
+    if(row !== undefined && row !== null) {
+      row.focus();
+    }
+  }
+
   public componentWillUnmount(): void {
     this.release();
   }
 
   private grabbed: number;
   private held: number;
+  private rows: HTMLButtonElement[];
+  private settled: number;
+  private walked: boolean;
+
+  /** Returns the rows on show, folded ones left out, in the order they are
+      read down the panel. This is what the arrow keys walk. */
+  private entries(): Entry[] {
+    const entries = [] as Entry[];
+    for(const component of this.props.sections) {
+      const scenarios = OutlinePanel.scenariosOf(component);
+      const open = this.state.open.has(component);
+      entries.push({
+        node: component,
+        component,
+        box: null,
+        parent: null,
+        depth: 0,
+        label: component.name,
+        title: component.name,
+        note: `${scenarios.length}`,
+        leaf: scenarios.length === 0,
+        open,
+        style: this.editingStyle(component),
+        visit: () => this.props.onSection?.(component),
+        choose: () => {
+          const here = component === this.props.component;
+          this.props.onSection?.(component);
+          this.spread(OutlinePanel.under(component), !(here && open));
+        }
+      });
+      if(!open) {
+        continue;
+      }
+      for(let index = 0; index < scenarios.length; index += 1) {
+        this.gather(entries, component, scenarios[index], index);
+      }
+    }
+    return entries;
+  }
+
+  private gather(entries: Entry[], component: Component, layout: Layout,
+      index: number): void {
+    const open = this.state.open.has(layout);
+    const label = OutlinePanel.conditionOf(layout, index);
+    entries.push({
+      node: layout,
+      component,
+      box: null,
+      parent: component,
+      depth: 1,
+      label,
+      title: label,
+      note: `${layout.boxes.length}`,
+      leaf: layout.boxes.length === 0 && layout.overlays.length === 0,
+      open,
+      style: this.markFor(layout.boxes),
+      visit: () => this.props.onActivate?.(component, layout.boxes),
+      choose: () => {
+        const here = component === this.props.component;
+        this.props.onActivate?.(component, layout.boxes);
+        this.spread([layout as object].concat(layout.overlays),
+          !(here && open));
+      }
+    });
+    if(!open) {
+      return;
+    }
+    for(const box of OutlinePanel.reading(layout.boxes)) {
+      this.carry(entries, component, box, layout, 2);
+    }
+    for(let order = 0; order < layout.overlays.length; order += 1) {
+      const overlay = layout.overlays[order];
+      const shown = this.state.open.has(overlay);
+      entries.push({
+        node: overlay,
+        component,
+        box: null,
+        parent: layout,
+        depth: 2,
+        label: `Layer ${order + 1}`,
+        title: `Layer ${order + 1}`,
+        note: `${overlay.length}`,
+        leaf: overlay.length === 0,
+        open: shown,
+        style: this.markFor(overlay),
+        visit: () => this.props.onActivate?.(component, overlay),
+        choose: () => {
+          const here = component === this.props.component;
+          this.props.onActivate?.(component, overlay);
+          this.spread([overlay], !(here && shown));
+        }
+      });
+      if(!shown) {
+        continue;
+      }
+      for(const box of OutlinePanel.reading(overlay)) {
+        this.carry(entries, component, box, overlay, 3);
+      }
+    }
+  }
+
+  private carry(entries: Entry[], component: Component, box: Box,
+      parent: object, depth: number): void {
+    const chosen = this.props.selection.indexOf(box) !== -1;
+    const visit = () => this.props.onReveal?.(component, box);
+    entries.push({
+      node: box,
+      component,
+      box,
+      parent,
+      depth,
+      label: OutlinePanel.nameOf(box),
+      title: `${box.width} x ${box.height} at ${box.x}, ${box.y}`,
+      note: OutlinePanel.sizeOf(box, chosen),
+      leaf: true,
+      open: false,
+      style: (() => {
+        if(!chosen) {
+          return {};
+        }
+        return OutlinePanel.STYLE.chosen;
+      })(),
+      visit,
+      choose: visit
+    });
+  }
+
+  private renderRow = (entry: Entry, index: number) => {
+    const twist = (() => {
+      if(entry.leaf) {
+        return '';
+      }
+      if(entry.open) {
+        return '\u25BE';
+      }
+      return '\u25B8';
+    })();
+    const reached = (() => {
+      if(index === Math.max(this.state.focus, 0)) {
+        return 0;
+      }
+      return -1;
+    })();
+    return (
+      <div key={index} style={{...OutlinePanel.STYLE.row, ...entry.style,
+          paddingLeft: `${entry.depth * INDENT}px`}}>
+        <button style={OutlinePanel.STYLE.twist} tabIndex={-1}
+            onClick={() => this.toggle(entry.node)} title='Fold'>
+          {twist}
+        </button>
+        <button style={OutlinePanel.STYLE.label} tabIndex={reached}
+            ref={element => this.rows[index] = element}
+            title={entry.title} onFocus={() => this.settle(index)}
+            onClick={() => {
+              this.settle(index);
+              entry.choose();
+            }}>
+          {entry.label}
+        </button>
+        <span style={OutlinePanel.STYLE.note}>{entry.note}</span>
+      </div>);
+  }
+
+  /** Walks the tree by the arrow keys, the way a tree is walked anywhere
+      else: down and up move a row at a time, right opens a row and then
+      steps into it, left shuts it and then steps back out to what holds
+      it. Whatever the walk lands on becomes the current item, the same as
+      a press would make it. */
+  private onKeyDown = (event: React.KeyboardEvent) => {
+    const entries = this.entries();
+    const at = Math.min(Math.max(this.state.focus, 0), entries.length - 1);
+    const entry = entries[at];
+    if(entry === undefined) {
+      return;
+    }
+    if(event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.walk(entries, at + 1);
+    } else if(event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.walk(entries, at - 1);
+    } else if(event.key === 'Home') {
+      event.preventDefault();
+      this.walk(entries, 0);
+    } else if(event.key === 'End') {
+      event.preventDefault();
+      this.walk(entries, entries.length - 1);
+    } else if(event.key === 'ArrowRight') {
+      event.preventDefault();
+      if(entry.leaf) {
+        return;
+      }
+      if(!entry.open) {
+        this.toggle(entry.node);
+      } else {
+        this.walk(entries, at + 1);
+      }
+    } else if(event.key === 'ArrowLeft') {
+      event.preventDefault();
+      if(!entry.leaf && entry.open) {
+        this.toggle(entry.node);
+        return;
+      }
+      const holder = entries.findIndex(other => other.node === entry.parent);
+      if(holder !== -1) {
+        this.walk(entries, holder);
+      }
+    } else if(event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      entry.choose();
+    }
+  }
+
+  /** Moves the focus to a row and makes it the current item, leaving the
+      tree folded as it stands so that a walk can step over what is shut
+      rather than opening it. */
+  private walk(entries: Entry[], index: number): void {
+    const at = Math.min(Math.max(index, 0), entries.length - 1);
+    this.settle(at);
+    this.walked = true;
+    entries[at].visit();
+  }
+
+  private settle(index: number): void {
+    if(index === this.state.focus) {
+      return;
+    }
+    this.setState({focus: index});
+  }
+
+  /** Opens a section and its scenarios, so that the one being edited is not
+      left folded away out of sight. */
+  private reveal(component: Component): void {
+    const open = new Set(this.state.open);
+    open.add(component);
+    for(const layout of component.layouts) {
+      open.add(layout);
+    }
+    this.setState({open});
+  }
 
   private onGrab = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -95,213 +402,6 @@ export class OutlinePanel extends React.Component<Properties, State> {
   private release = () => {
     window.removeEventListener('mousemove', this.onDrag);
     window.removeEventListener('mouseup', this.release);
-  }
-
-  public componentDidUpdate(previous: Properties): void {
-    if(previous.component !== this.props.component) {
-      this.reveal(this.props.component);
-    }
-  }
-
-  /** Opens a section and its scenarios, so that the one being edited is not
-      left folded away out of sight. */
-  private reveal(component: Component): void {
-    const open = new Set(this.state.open);
-    open.add(component);
-    for(const layout of component.layouts) {
-      open.add(layout);
-    }
-    this.setState({open});
-  }
-
-  private renderSection = (component: Component, index: number) => {
-    const open = this.state.open.has(component);
-    const scenarios = OutlinePanel.scenariosOf(component);
-    const children = (() => {
-      if(!open) {
-        return [] as JSX.Element[];
-      }
-      return scenarios.map((layout, order) =>
-        this.renderScenario(component, layout, order));
-    })();
-    const style = (() => {
-      if(component !== this.props.component) {
-        return {};
-      }
-      return OutlinePanel.STYLE.editing;
-    })();
-    return (
-      <div key={index}>
-        {this.renderRow({
-          depth: 0,
-          label: component.name,
-          note: `${scenarios.length}`,
-          open,
-          leaf: scenarios.length === 0,
-          style,
-          onToggle: () => this.toggle(component),
-          onChoose: () => {
-            const here = component === this.props.component;
-            this.props.onSection?.(component);
-            this.spread(OutlinePanel.under(component), !(here && open));
-          }
-        })}
-        {children}
-      </div>);
-  }
-
-  private renderScenario(component: Component, layout: Layout,
-      index: number): JSX.Element {
-    const open = this.state.open.has(layout);
-    const children = (() => {
-      if(!open) {
-        return [] as JSX.Element[];
-      }
-      const boxes = OutlinePanel.reading(layout.boxes).map((box, order) =>
-        this.renderBox(component, box, order, 2));
-      const layers = layout.overlays.map((overlay, order) =>
-        this.renderLayer(component, overlay, order));
-      return boxes.concat(layers);
-    })();
-    return (
-      <div key={`scenario-${index}`}>
-        {this.renderRow({
-          depth: 1,
-          label: OutlinePanel.conditionOf(layout, index),
-          note: `${layout.boxes.length}`,
-          open,
-          leaf: layout.boxes.length === 0 && layout.overlays.length === 0,
-          style: this.markFor(layout.boxes),
-          onToggle: () => this.toggle(layout),
-          onChoose: () => {
-            const here = component === this.props.component;
-            this.props.onActivate?.(component, layout.boxes);
-            this.spread([layout as object].concat(layout.overlays),
-              !(here && open));
-          }
-        })}
-        {children}
-      </div>);
-  }
-
-  private renderLayer(component: Component, overlay: Box[],
-      index: number): JSX.Element {
-    const open = this.state.open.has(overlay);
-    const children = (() => {
-      if(!open) {
-        return [] as JSX.Element[];
-      }
-      return OutlinePanel.reading(overlay).map((box, order) =>
-        this.renderBox(component, box, order, 3));
-    })();
-    return (
-      <div key={`layer-${index}`}>
-        {this.renderRow({
-          depth: 2,
-          label: `Layer ${index + 1}`,
-          note: `${overlay.length}`,
-          open,
-          leaf: overlay.length === 0,
-          style: this.markFor(overlay),
-          onToggle: () => this.toggle(overlay),
-          onChoose: () => {
-            const here = component === this.props.component;
-            this.props.onActivate?.(component, overlay);
-            this.spread([overlay], !(here && open));
-          }
-        })}
-        {children}
-      </div>);
-  }
-
-  private renderBox(component: Component, box: Box, index: number,
-      depth: number): JSX.Element {
-    const style = (() => {
-      if(this.props.selection.indexOf(box) === -1) {
-        return {};
-      }
-      return OutlinePanel.STYLE.chosen;
-    })();
-    return (
-      <div key={`box-${index}`}>
-        {this.renderRow({
-          depth,
-          label: OutlinePanel.nameOf(box),
-          title: `${box.width} x ${box.height} at ${box.x}, ${box.y}`,
-          note: OutlinePanel.sizeOf(box,
-            this.props.selection.indexOf(box) !== -1),
-          open: false,
-          leaf: true,
-          style,
-          onToggle: () => this.props.onReveal?.(component, box),
-          onChoose: () => this.props.onReveal?.(component, box)
-        })}
-      </div>);
-  }
-
-  private renderRow(entry: {depth: number, label: string,
-      note: React.ReactNode,
-      open: boolean, leaf: boolean, style: object, onToggle: () => void,
-      onChoose: () => void, title?: string}): JSX.Element {
-    const title = (() => {
-      if(entry.title === undefined) {
-        return entry.label;
-      }
-      return entry.title;
-    })();
-    const twist = (() => {
-      if(entry.leaf) {
-        return '';
-      }
-      if(entry.open) {
-        return '\u25BE';
-      }
-      return '\u25B8';
-    })();
-    return (
-      <div style={{...OutlinePanel.STYLE.row, ...entry.style,
-          paddingLeft: `${entry.depth * INDENT}px`}}>
-        <button style={OutlinePanel.STYLE.twist} onClick={entry.onToggle}
-            title='Fold'>
-          {twist}
-        </button>
-        <button style={OutlinePanel.STYLE.label} onClick={entry.onChoose}
-            title={title}>
-          {entry.label}
-        </button>
-        <span style={OutlinePanel.STYLE.note}>{entry.note}</span>
-      </div>);
-  }
-
-  /** Returns a box's size written in the colours of the policies that
-      decide it, the width in one and the height in the other, so that what
-      a box is made of can be read without selecting it. The darker shade of
-      each colour is used, since the lighter one is what the box is painted
-      and does not carry against a white page. */
-  private static sizeOf(box: Box, chosen: boolean): React.ReactNode {
-    if(chosen) {
-      return `${box.width}x${box.height}`;
-    }
-    return (
-      <React.Fragment>
-        <span style={{color: POLICY_EDGE[box.widthPolicy]}}>{box.width}</span>
-        x
-        <span style={{color: POLICY_EDGE[box.heightPolicy]}}>
-          {box.height}
-        </span>
-      </React.Fragment>);
-  }
-
-  /** Returns everything a section holds that can be opened or shut. */
-  private static under(component: Component): object[] {
-    const nodes = [component as object];
-    for(const layout of OutlinePanel.scenariosOf(component)) {
-      nodes.push(layout);
-      for(const overlay of layout.overlays) {
-        nodes.push(overlay);
-      }
-    }
-    return nodes;
   }
 
   /** Opens or shuts a set of nodes together. */
@@ -333,6 +433,45 @@ export class OutlinePanel extends React.Component<Properties, State> {
       return {};
     }
     return OutlinePanel.STYLE.working;
+  }
+
+  /** Returns the marking that says a section is the one being edited. */
+  private editingStyle(component: Component) {
+    if(component !== this.props.component) {
+      return {};
+    }
+    return OutlinePanel.STYLE.editing;
+  }
+
+  /** Returns a box's size written in the colours of the policies that
+      decide it, the width in one and the height in the other, so that what
+      a box is made of can be read without selecting it. The darker shade of
+      each colour is used, since the lighter one is what the box is painted
+      and does not carry against a white page. */
+  private static sizeOf(box: Box, chosen: boolean): React.ReactNode {
+    if(chosen) {
+      return `${box.width}x${box.height}`;
+    }
+    return (
+      <React.Fragment>
+        <span style={{color: POLICY_EDGE[box.widthPolicy]}}>{box.width}</span>
+        x
+        <span style={{color: POLICY_EDGE[box.heightPolicy]}}>
+          {box.height}
+        </span>
+      </React.Fragment>);
+  }
+
+  /** Returns everything a section holds that can be opened or shut. */
+  private static under(component: Component): object[] {
+    const nodes = [component as object];
+    for(const layout of OutlinePanel.scenariosOf(component)) {
+      nodes.push(layout);
+      for(const overlay of layout.overlays) {
+        nodes.push(overlay);
+      }
+    }
+    return nodes;
   }
 
   /** Returns the scenarios a section is made of, without the blank waiting
