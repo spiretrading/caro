@@ -177,14 +177,14 @@ the opposite edge: the leading edge of a first child, every cross-axis leading
 edge, and any boundary against a container, whose size is derived from its
 contents and would be overwritten. A resize never changes a policy; size and
 policy are independent.
-While a box is resized, any edge of it that lines up with an edge of another
-box draws a red line across the canvas along that edge, and every box that
-line touches is tinted and outlined so it is clear which boxes the line
-connects. A drag draws none, because there is nothing left for them to say: a
-dragged box already sits where it would land, so its edges meet its
-neighbours' whatever the cursor does, and guides that cannot fail to appear
-are not guides. They earn their place on a resize, where an edge moves
-continuously and lines up with something or does not. Overlays are
+While a box is moved or resized, any edge of it that lines up with an edge of
+another box draws a red line across the canvas along that edge, and every box
+that line touches is tinted and outlined so it is clear which boxes the line
+connects. A drag measures the box where it actually is, under the cursor,
+never where it would land if let go. Those are the same box, and a box cannot
+be aligned with itself: measuring the landing place drew a guide between the
+box and its own preview, and drew it always, since a box that has landed meets
+its neighbours by construction. Overlays are
 positioned against the canvas's padding box rather than its bounding
 rectangle, since an absolutely positioned child measures from inside the
 border; measuring from the bounding rectangle draws every overlay a border

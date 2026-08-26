@@ -314,17 +314,29 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         style={{...LayoutCanvas.STYLE.guide, ...style}}/>);
   }
 
-  /** Measures what the edge being resized lines up with. A drag has nothing
-      to measure: the box is already sitting where it would land, so its
-      edges meet its neighbours' whatever the cursor does, and a guide that
-      cannot fail to appear says nothing. */
+  /** Measures what the box under the cursor lines up with. A drag measures
+      the box being carried where it actually is on screen, never where it
+      would land: the two are the same box, and a box cannot be aligned with
+      itself. */
   private measureGuides(): {guides: Guide[], aligned: Node[]} {
-    if(this.state.gesture !== Gesture.RESIZE) {
+    const gesture = this.state.gesture;
+    if(gesture !== Gesture.DRAG && gesture !== Gesture.RESIZE) {
+      return LayoutCanvas.NOTHING;
+    }
+    if(gesture === Gesture.DRAG && !this.isActive()) {
       return LayoutCanvas.NOTHING;
     }
     const moving = [] as Node[];
     const verticals = [] as number[];
     const horizontals = [] as number[];
+    if(gesture === Gesture.DRAG) {
+      moving.push(...leaves(this.state.carried));
+      const left = this.state.current.x - this.state.grab.x;
+      const top = this.state.current.y - this.state.grab.y;
+      verticals.push(left, left + this.state.size.width);
+      horizontals.push(top, top + this.state.size.height);
+      return this.collectGuides(moving, verticals, horizontals);
+    }
     const edge = this.state.edge;
     for(const grip of edge.horizontal) {
       const rect = this.boundaryOf(grip, moving);
@@ -340,6 +352,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       horizontals.push(rect.bottom);
     }
+    return this.collectGuides(moving, verticals, horizontals);
+  }
+
+  private collectGuides(moving: Node[], verticals: number[],
+      horizontals: number[]): {guides: Guide[], aligned: Node[]} {
     const guides = [] as Guide[];
     const aligned = [] as Node[];
     const root = this.props.root as Container;
