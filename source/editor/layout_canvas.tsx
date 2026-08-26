@@ -1,20 +1,11 @@
 import * as React from 'react';
 import { Container, Node, Orientation, Reference,
   SizePolicy } from '../layout';
-import { assemble, attach, detach, flatten, isPlaced, leaves, normalize,
-  parentOf, Placement, Side, toOrientation } from './tree';
+import { assemble, attach, detach, flatten, leaves, normalize, parentOf,
+  Placement, Side, toOrientation } from './tree';
 
 /** The distance a press must cover before it draws or drags. */
 const DRAG_THRESHOLD = 4;
-
-/** The fraction of a box's edge that attaches a box beside it. */
-const NEST_ZONE = 0.25;
-
-/** The smallest an edge zone may be, in pixels. */
-const NEST_FLOOR = 12;
-
-/** The largest an edge zone may be, in pixels. */
-const NEST_LIMIT = 64;
 
 /** The fraction of the cross axis a drawn box must span to expand. */
 const FILL_RATIO = 0.8;
@@ -51,12 +42,6 @@ const ALIGN_TOLERANCE = 0.5;
 
 /** The largest the box following the cursor is drawn. */
 const CARRIED_LIMIT = {width: 400, height: 200};
-
-/** How far the cursor must travel before a drag is placed again. */
-const SETTLE_DISTANCE = 3;
-
-/** How far the cursor must travel before a placement may be undone. */
-const REVERSAL_DISTANCE = 12;
 
 /** The gesture a press has turned into. */
 enum Gesture {
@@ -209,8 +194,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private inset: Point;
   private identifiers: WeakMap<Node, string>;
   private count: number;
-  private settled: Point;
-  private previous: Drop;
   private pending: Node[];
   private extend: boolean;
 
@@ -464,8 +447,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private renderMarker(): JSX.Element {
-    if(this.state.gesture !== Gesture.DRAW || !this.isActive() ||
-        this.state.drop === null) {
+    const gesture = this.state.gesture;
+    if(gesture !== Gesture.DRAW && gesture !== Gesture.DRAG) {
+      return null;
+    }
+    if(!this.isActive() || this.state.drop === null) {
       return null;
     }
     const marker = this.state.drop.marker;
@@ -1040,36 +1026,30 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return best;
   }
 
-  private sideOf(target: Node, point: Point): Side {
-    const root = this.props.root as Container;
-    const parent = parentOf(root, target);
-    const orientation = (() => {
-      if(parent === null) {
-        return root.orientation;
-      }
-      return parent.orientation;
-    })();
+  private sideOf(target: Node, centre: Point): Side {
     const rect = this.elements.get(target).getBoundingClientRect();
-    if(orientation === Orientation.COLUMN) {
-      const zone = LayoutCanvas.zoneOf(rect.width);
-      if(point.x < rect.left + zone) {
+    const across = centre.x - (rect.left + rect.width / 2);
+    const down = centre.y - (rect.top + rect.height / 2);
+    if(Math.abs(across) > Math.abs(down)) {
+      if(across < 0) {
         return Side.LEFT;
-      } else if(point.x > rect.right - zone) {
-        return Side.RIGHT;
-      } else if(point.y < rect.top + rect.height / 2) {
-        return Side.TOP;
       }
-      return Side.BOTTOM;
+      return Side.RIGHT;
     }
-    const zone = LayoutCanvas.zoneOf(rect.height);
-    if(point.y < rect.top + zone) {
+    if(down < 0) {
       return Side.TOP;
-    } else if(point.y > rect.bottom - zone) {
-      return Side.BOTTOM;
-    } else if(point.x < rect.left + rect.width / 2) {
-      return Side.LEFT;
     }
-    return Side.RIGHT;
+    return Side.BOTTOM;
+  }
+
+  /** Returns the middle of the box being carried, which is what decides
+      where it lands rather than the cursor, so that a box goes where it
+      looks like it is going. */
+  private carriedCentre(): Point {
+    return {
+      x: this.state.current.x - this.state.grab.x + this.state.size.width / 2,
+      y: this.state.current.y - this.state.grab.y + this.state.size.height / 2
+    };
   }
 
   private onMouseDown = (event: React.MouseEvent) => {
@@ -1080,8 +1060,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       y: this.bounds.top + this.container.clientTop * this.props.zoom
     };
     this.snapshot = this.props.root.clone();
-    this.settled = null;
-    this.previous = null;
     this.extend = event.shiftKey;
     this.attach();
     event.preventDefault();
@@ -1169,37 +1147,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         this.props.onChange?.();
         return;
       }
-      if(this.settled !== null && LayoutCanvas.distance(point, this.settled) <
-          SETTLE_DISTANCE) {
-        return;
-      }
-      const drop = this.resolve(point);
-      if(drop === null || drop === this.state.drop ||
-          drop.target === this.state.carried) {
-        return;
-      }
-      if(this.state.drop !== null &&
-          this.state.drop.target === drop.target &&
-          this.state.drop.side === drop.side) {
-        return;
-      }
-      if(this.previous !== null && this.previous.target === drop.target &&
-          this.previous.side === drop.side && this.settled !== null &&
-          LayoutCanvas.distance(point, this.settled) < REVERSAL_DISTANCE) {
-        return;
-      }
-      const root = this.props.root as Container;
-      if(isPlaced(root, this.state.carried, drop.target, drop.side)) {
-        this.setState({drop});
-        return;
-      }
-      detach(root, this.state.carried);
-      attach(root, this.state.carried, drop.target, drop.side);
-      normalize(root);
-      this.previous = this.state.drop;
-      this.settled = point;
-      this.setState({drop});
-      this.props.onChange?.();
+      this.setState({drop: this.resolve(this.carriedCentre())});
     });
   }
 
@@ -1233,6 +1181,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     if(gesture === Gesture.DRAG) {
       const settled = this.props.root as Container;
       const chosen = leaves(carried);
+      if(drop !== null) {
+        detach(settled, carried);
+        attach(settled, carried, drop.target, drop.side);
+      }
       flatten(settled, carried);
       normalize(settled);
       this.props.onSelect?.(chosen, false);
@@ -1300,11 +1252,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return value / this.props.zoom;
   }
 
-  private static zoneOf(extent: number): number {
-    return Math.min(Math.max(extent * NEST_ZONE, NEST_FLOOR), extent * 0.4,
-      NEST_LIMIT);
-  }
-
   private static gap(rect: DOMRect, point: Point): number {
     const x = point.x - Math.min(Math.max(point.x, rect.left), rect.right);
     const y = point.y - Math.min(Math.max(point.y, rect.top), rect.bottom);
@@ -1331,11 +1278,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       point.y >= rect.top && point.y <= rect.bottom;
   }
 
-  private static distance(left: Point, right: Point): number {
-    const x = left.x - right.x;
-    const y = left.y - right.y;
-    return Math.sqrt(x * x + y * y);
-  }
 
   private static toDirection(orientation: Orientation) {
     if(orientation === Orientation.ROW) {

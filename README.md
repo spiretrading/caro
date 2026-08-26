@@ -161,9 +161,9 @@ Scenarios are independent. Only one is ever laid out at a time, and editing
 one never touches another. A scenario's canvas
 grows with its contents and never falls below a floor, so a blank one still
 has room to draw into. Drag on empty space to draw a box, drag an existing box
-and it follows the cursor while the layout reflows live around a phantom of
-it, and drag a box's edge to resize it, or a corner to resize both axes at once, down
-to a single pixel; a box you want gone is deleted rather than collapsed.
+and it follows the cursor while the layout it came from holds still behind it,
+and drag a box's edge to resize it, or a corner to resize both axes at once,
+down to a single pixel; a box you want gone is deleted rather than collapsed.
 
 The boundary between two boxes belongs to both of them, so dragging it is a
 splitter: one box grows by exactly what the other gives up and the total is
@@ -227,22 +227,25 @@ inside a row. Containers left holding a single child collapse, and a root left
 wrapping a lone container absorbs it, so the tree stays canonical no matter how
 much a box is dragged around.
 
-A drag holds its placement while the cursor is over the box being dragged,
-never guesses at a nearest box while a box is under the cursor, and will not
-undo a placement until the cursor has travelled far enough to mean it. Without
-those rules a drag into an edge zone oscillates: nesting two boxes into a row
-halves their width, which moves the geometry out from under the cursor, which
-nests it somewhere else.
+A drag moves nothing until it is let go. The box travels with the cursor, a
+marker shows the edge it will attach to, the guides say what it is lining up
+with, and the tree is edited once, on release. The layout used to reflow under
+the cursor on every move, which is what made dragging feel like a fight: a box
+nested into a row halves its width, that moves the geometry out from under the
+cursor, and the cursor is then somewhere else, which nests it somewhere else
+again. Damping held that down -- a settle distance, a reversal distance, a
+test for whether a box was already where it was about to be put -- and all of
+it went when the reflow did. A drag that changes nothing until it ends cannot
+oscillate.
 
-Edge zones are a quarter of a box's edge, floored at 12px and capped at 64px,
-so the zones that nest a box beside another are reachable on a short edge and
-do not swallow the middle of a long one. Dragging into empty space attaches to
-whichever box is nearest, on the side the cursor lies beyond, so a box can be
-pulled out of a row by dragging below it.
-
-A drawn box resolves against the centre of the rectangle drawn, not against
-the cursor, which would otherwise land in a neighbour's edge zone and nest the
-box instead of stacking it.
+Where a box lands is decided by the middle of the box rather than by the
+cursor, and it goes on the side of its new neighbour that it came from: the
+larger of the two distances between the centres picks the axis, and its sign
+picks the side. Dragging one box onto another therefore pushes that one aside
+in the direction of travel. The same rule reads a drawn rectangle, from the
+middle of what was drawn. Nothing is measured against edge zones any more,
+which is why the middle of a box is no longer a dead spot that stacks when you
+meant to nest.
 
 Canvases magnify from their literal size up to ten times it, stepped from the
 toolbar or with the wheel held under control. Magnification is a property of

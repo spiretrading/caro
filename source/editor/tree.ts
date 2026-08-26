@@ -207,35 +207,6 @@ function divide(placements: Placement[], axis: 'x' | 'y',
   return bands;
 }
 
-/** Returns whether a node already sits against one side of a target, either
-    directly or inside the container occupying that slot. */
-export function isPlaced(root: Container, node: Node, target: Node,
-    side: Side): boolean {
-  const orientation = toOrientation(side);
-  const anchor = ascend(root, target, orientation, node);
-  if(anchor === null) {
-    return false;
-  }
-  const parent = parentOf(root, anchor);
-  if(parent === null || parent.orientation !== orientation) {
-    return false;
-  }
-  const index = parent.children.indexOf(anchor);
-  const neighbour = (() => {
-    if(side === Side.TOP || side === Side.LEFT) {
-      return parent.children[index - 1];
-    }
-    return parent.children[index + 1];
-  })();
-  if(neighbour === undefined) {
-    return false;
-  }
-  if(neighbour === node) {
-    return true;
-  }
-  return neighbour instanceof Container && contains(neighbour, node);
-}
-
 /** Recomputes the size and policies of every container in a tree. */
 export function normalize(node: Node): void {
   if(!(node instanceof Container)) {
