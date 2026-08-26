@@ -143,6 +143,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     this.count = 0;
     this.pending = null;
     this.extend = false;
+    this.frozen = null;
   }
 
   public render(): JSX.Element {
@@ -196,6 +197,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private count: number;
   private pending: Node[];
   private extend: boolean;
+  private frozen: Map<Node, DOMRect>;
 
   private renderNode(node: Node, orientation: Orientation): JSX.Element {
     if(node instanceof Container) {
@@ -447,11 +449,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private renderMarker(): JSX.Element {
-    const gesture = this.state.gesture;
-    if(gesture !== Gesture.DRAW && gesture !== Gesture.DRAG) {
-      return null;
-    }
-    if(!this.isActive() || this.state.drop === null) {
+    if(this.state.gesture !== Gesture.DRAW || !this.isActive() ||
+        this.state.drop === null) {
       return null;
     }
     const marker = this.state.drop.marker;
@@ -639,6 +638,35 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return found;
   }
 
+  /** Returns where a box is, or where it was when the drag began. A drag
+      reflows the layout to show what dropping would do, so the geometry it
+      is resolved against has to be held still, or the reflow would decide
+      the next placement and the placement would decide the next reflow. */
+  private rectOf(node: Node): DOMRect {
+    if(this.frozen !== null) {
+      const held = this.frozen.get(node);
+      if(held !== undefined) {
+        return held;
+      }
+    }
+    const element = this.elements.get(node);
+    if(element === undefined) {
+      return null;
+    }
+    return element.getBoundingClientRect();
+  }
+
+  private freeze(): void {
+    const root = this.props.root as Container;
+    this.frozen = new Map<Node, DOMRect>();
+    for(const node of leaves(root)) {
+      const element = this.elements.get(node);
+      if(element !== undefined) {
+        this.frozen.set(node, element.getBoundingClientRect());
+      }
+    }
+  }
+
   private regionOf(nodes: Node | Node[]) {
     const boxes = (() => {
       if(Array.isArray(nodes)) {
@@ -646,9 +674,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return leaves(nodes);
     })();
-    const rects = boxes.map(node => this.elements.get(node))
-      .filter(element => element !== undefined)
-      .map(element => element.getBoundingClientRect());
+    const rects = boxes.map(node => this.rectOf(node))
+      .filter(rect => rect !== null);
     if(rects.length === 0) {
       return null;
     }
@@ -932,8 +959,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       if(element === undefined) {
         continue;
       }
-      const rect = element.getBoundingClientRect();
-      if(point.x >= rect.left && point.x <= rect.right &&
+      const rect = this.rectOf(node);
+      if(rect !== null && point.x >= rect.left && point.x <= rect.right &&
           point.y >= rect.top && point.y <= rect.bottom) {
         return node;
       }
@@ -965,11 +992,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return null;
     }
     const hit = candidates.find(node => {
-      const element = this.elements.get(node);
-      if(element === undefined) {
+      const rect = this.rectOf(node);
+      if(rect === null) {
         return false;
       }
-      return LayoutCanvas.within(point, element.getBoundingClientRect());
+      return LayoutCanvas.within(point, rect);
     });
     if(hit !== undefined) {
       const side = this.sideOf(hit, point);
@@ -985,7 +1012,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private markerFor(target: Node, side: Side) {
-    const rect = this.elements.get(target).getBoundingClientRect();
+    const rect = this.rectOf(target);
     if(side === Side.LEFT || side === Side.RIGHT) {
       const left = (() => {
         if(side === Side.LEFT) {
@@ -1012,12 +1039,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     let best = null as Node;
     let distance = Infinity;
     for(const node of candidates) {
-      const element = this.elements.get(node);
-      if(element === undefined) {
+      const rect = this.rectOf(node);
+      if(rect === null) {
         continue;
       }
-      const measure = LayoutCanvas.gap(
-        element.getBoundingClientRect(), point);
+      const measure = LayoutCanvas.gap(rect, point);
       if(measure < distance) {
         distance = measure;
         best = node;
@@ -1027,7 +1053,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private sideOf(target: Node, centre: Point): Side {
-    const rect = this.elements.get(target).getBoundingClientRect();
+    const rect = this.rectOf(target);
     const across = centre.x - (rect.left + rect.width / 2);
     const down = centre.y - (rect.top + rect.height / 2);
     if(Math.abs(across) > Math.abs(down)) {
@@ -1093,6 +1119,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       }
       return Gesture.DRAG;
     })();
+    if(gesture === Gesture.DRAG) {
+      this.freeze();
+    }
     const region = (() => {
       if(carried === null) {
         return null;
@@ -1147,13 +1176,28 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         this.props.onChange?.();
         return;
       }
-      this.setState({drop: this.resolve(this.carriedCentre())});
+      const drop = this.resolve(this.carriedCentre());
+      if(drop === null) {
+        return;
+      }
+      const shown = this.state.drop;
+      if(shown !== null && shown.target === drop.target &&
+          shown.side === drop.side) {
+        return;
+      }
+      const root = this.props.root as Container;
+      detach(root, this.state.carried);
+      attach(root, this.state.carried, drop.target, drop.side);
+      normalize(root);
+      this.setState({drop});
+      this.props.onChange?.();
     });
   }
 
   private onMouseUp = () => {
     this.detachListeners();
     this.pending = null;
+    this.frozen = null;
     const gesture = this.state.gesture;
     const drop = this.state.drop;
     const carried = this.state.carried;
@@ -1181,10 +1225,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     if(gesture === Gesture.DRAG) {
       const settled = this.props.root as Container;
       const chosen = leaves(carried);
-      if(drop !== null) {
-        detach(settled, carried);
-        attach(settled, carried, drop.target, drop.side);
-      }
       flatten(settled, carried);
       normalize(settled);
       this.props.onSelect?.(chosen, false);
@@ -1209,6 +1249,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     }
     this.detachListeners();
     this.pending = null;
+    this.frozen = null;
     this.props.onRestore?.(this.snapshot);
     this.setState({
       gesture: Gesture.NONE, carried: null, grab: null, size: null,

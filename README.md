@@ -161,7 +161,8 @@ Scenarios are independent. Only one is ever laid out at a time, and editing
 one never touches another. A scenario's canvas
 grows with its contents and never falls below a floor, so a blank one still
 has room to draw into. Drag on empty space to draw a box, drag an existing box
-and it follows the cursor while the layout it came from holds still behind it,
+and it follows the cursor while the layout behind it settles into what the
+drop would make of it,
 and drag a box's edge to resize it, or a corner to resize both axes at once,
 down to a single pixel; a box you want gone is deleted rather than collapsed.
 
@@ -227,16 +228,21 @@ inside a row. Containers left holding a single child collapse, and a root left
 wrapping a lone container absorbs it, so the tree stays canonical no matter how
 much a box is dragged around.
 
-A drag moves nothing until it is let go. The box travels with the cursor, a
-marker shows the edge it will attach to, the guides say what it is lining up
-with, and the tree is edited once, on release. The layout used to reflow under
-the cursor on every move, which is what made dragging feel like a fight: a box
-nested into a row halves its width, that moves the geometry out from under the
-cursor, and the cursor is then somewhere else, which nests it somewhere else
-again. Damping held that down -- a settle distance, a reversal distance, a
-test for whether a box was already where it was about to be put -- and all of
-it went when the reflow did. A drag that changes nothing until it ends cannot
-oscillate.
+A drag shows what dropping would do. The box travels with the cursor and the
+layout behind it reflows into the arrangement it would have on release, so
+what is on screen when the button comes up is what stays.
+
+Doing that used to be a fight. A box nested into a row halves its width, that
+moves the geometry out from under the cursor, the cursor is then over
+something else, and that nests it somewhere else again. Damping held it down
+-- a settle distance, a reversal distance, a test for whether a box was
+already where it was about to be put -- and all of it was treating a symptom.
+What actually cures it is resolving the drag against geometry held still from
+the moment the box was picked up: the reflow moves the boxes, but not the
+rectangles the placement is computed from. The loop is cut rather than
+damped, so the placement cannot change unless the cursor does, and nesting two
+full width boxes into a row and halving both of them leaves the drag exactly
+where it was.
 
 Where a box lands is decided by the middle of the box rather than by the
 cursor, and it goes on the side of its new neighbour that it came from: the
