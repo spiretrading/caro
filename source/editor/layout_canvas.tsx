@@ -17,6 +17,9 @@ const MINIMUM_SIZE = 1;
 /** How thick a box's policy edges are painted, in pixels of screen. */
 const EDGE = 3;
 
+/** How thick the ring around a selected box is painted. */
+const RING = 3;
+
 /** How close to an edge the cursor must be to resize a box, in pixels of
     screen. */
 const RESIZE_MARGIN = 8;
@@ -247,8 +250,9 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   private renderBox = (box: Box) => {
     const label = LayoutCanvas.labelOf(box);
+    const marked = this.props.selection.indexOf(box) !== -1;
     const selection = (() => {
-      if(this.props.selection.indexOf(box) !== -1) {
+      if(marked) {
         return LayoutCanvas.STYLE.selected;
       }
       return {};
@@ -265,8 +269,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           style={{...LayoutCanvas.STYLE.box,
             left: `${box.x}px`, top: `${box.y}px`,
             width: `${box.width}px`, height: `${box.height}px`,
-            ...LayoutCanvas.paintFor(box), ...selection, ...alignment,
-            ...LayoutCanvas.cursorFor(this.state.handle)}}>
+            ...LayoutCanvas.paintFor(box, marked), ...selection,
+            ...alignment, ...LayoutCanvas.cursorFor(this.state.handle)}}>
         {label !== '' &&
           <span style={{...LayoutCanvas.STYLE.label,
             ...LayoutCanvas.inkFor(box),
@@ -777,7 +781,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       left.top === right.top && left.bottom === right.bottom;
   }
 
-  private static paintFor(box: Box) {
+  private static paintFor(box: Box, marked: boolean) {
     const same = box.widthPolicy === box.heightPolicy;
     const across = (() => {
       if(same) {
@@ -794,10 +798,16 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const boxShadow = `inset ${EDGE}px 0 0 0 ${across}, ` +
       `inset -${EDGE}px 0 0 0 ${across}, inset 0 ${EDGE}px 0 0 ${down}, ` +
       `inset 0 -${EDGE}px 0 0 ${down}`;
+    const ring = (() => {
+      if(!marked) {
+        return boxShadow;
+      }
+      return `${boxShadow}, inset 0 0 0 ${EDGE + RING + 1}px #FFFFFF`;
+    })();
     if(!same) {
-      return {boxShadow};
+      return {boxShadow: ring};
     }
-    return {boxShadow,
+    return {boxShadow: ring,
       backgroundColor: POLICY_COLOR[box.widthPolicy]};
   }
 
@@ -829,8 +839,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       fontSize: '12px'
     },
     selected: {
-      outline: '2px solid #684BC7',
-      outlineOffset: '-2px'
+      outline: `${RING}px solid #684BC7`,
+      outlineOffset: `-${EDGE + RING}px`
     },
     active: {
       outline: '2px solid #684BC7',
