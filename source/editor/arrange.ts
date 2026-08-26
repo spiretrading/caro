@@ -44,12 +44,13 @@ export function push(boxes: Box[], moving: Box[]): void {
         if(anchored && moving.indexOf(other) !== -1) {
           continue;
         }
-        if(anchored) {
-          shove(other, box);
-        } else {
-          shove(box, other);
-        }
-        shifted = true;
+        const gave = (() => {
+          if(anchored) {
+            return shove(other, box);
+          }
+          return shove(box, other);
+        })();
+        shifted = shifted || gave;
       }
     }
     if(!shifted) {
@@ -58,8 +59,27 @@ export function push(boxes: Box[], moving: Box[]): void {
   }
 }
 
-/** Moves a box to the nearest place clear of another. */
-function shove(box: Box, other: Box): void {
+/** Returns whether a box has been covered past its middle, which is when it
+    gives way. Until then it holds its place, so that a box can be brought
+    right up against another and lined up with it without the other fleeing
+    the moment the two touch. The middle that counts is measured across
+    whichever axis the boxes are least deeply into each other, since that is
+    the one they are meeting along. */
+function buried(box: Box, other: Box): boolean {
+  const across = Math.min(box.right, other.right) - Math.max(box.x, other.x);
+  const down = Math.min(box.bottom, other.bottom) - Math.max(box.y, other.y);
+  if(across < down) {
+    return across > box.width / 2;
+  }
+  return down > box.height / 2;
+}
+
+/** Moves a box to the nearest place clear of another, once it has been
+    covered deeply enough to give way at all. */
+function shove(box: Box, other: Box): boolean {
+  if(!buried(box, other)) {
+    return false;
+  }
   const places = [
     {x: other.x - box.width, y: box.y},
     {x: other.right, y: box.y},
@@ -79,8 +99,9 @@ function shove(box: Box, other: Box): void {
     }
   }
   if(best === null) {
-    return;
+    return false;
   }
   box.x = best.x;
   box.y = best.y;
+  return true;
 }
