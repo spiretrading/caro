@@ -12,6 +12,9 @@ module.exports = {
   devtool: PROD ? false : 'source-map',
   entry: path.resolve(__dirname, 'source/index.tsx'),
   devServer: {
+    devMiddleware: {
+      writeToDisk: name => name.indexOf('hot-update') === -1
+    },
     static: {
       directory: path.resolve(__dirname, 'application')
     },
