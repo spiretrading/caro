@@ -188,7 +188,8 @@ export class Application extends React.Component<{}, State> {
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
           onCondition={this.onCondition}
           onProperties={this.onProperties} zoom={this.state.zoom}
-          onZoom={this.onZoom}/>);
+          onZoom={this.onZoom} onAddLayer={this.onAddLayer}
+          onRemoveLayer={this.onRemoveLayer} onRestore={this.onRestore}/>);
     }
     return (
       <div style={Application.STYLE.placeholder}>
@@ -373,12 +374,40 @@ export class Application extends React.Component<{}, State> {
 
   private rootOf(node: Node): Container {
     for(const layout of this.state.component.layouts) {
-      const root = layout.root as Container;
-      if(contains(root, node)) {
-        return root;
+      for(const tree of [layout.root, ...layout.overlays]) {
+        const root = tree as Container;
+        if(contains(root, node)) {
+          return root;
+        }
       }
     }
     return null;
+  }
+
+  private onAddLayer = (layout: Layout) => {
+    layout.overlays.push(new Container(Orientation.COLUMN, 0, 0,
+      SizePolicy.FILL, SizePolicy.FILL, []));
+    this.setState({
+      revision: this.state.revision + 1,
+      status: `Added layer ${layout.overlays.length}.`
+    });
+  }
+
+  private onRemoveLayer = (layout: Layout, layer: number) => {
+    layout.overlays.splice(layer, 1);
+    this.setState({
+      selection: null,
+      revision: this.state.revision + 1,
+      status: 'Removed a layer.'
+    });
+  }
+
+  private onRestore = (layout: Layout, layer: number, root: Node) => {
+    if(layer === -1) {
+      layout.root = root;
+      return;
+    }
+    layout.overlays[layer] = root;
   }
 
   private static readonly STYLE = {

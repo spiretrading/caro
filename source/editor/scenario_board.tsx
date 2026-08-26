@@ -44,6 +44,16 @@ interface Properties {
 
   /** Called when a scenario's properties are edited. */
   onProperties?: (layout: Layout, properties: string) => void;
+
+  /** Called to superimpose another layer on a scenario. */
+  onAddLayer?: (layout: Layout) => void;
+
+  /** Called to remove one of a scenario's layers. */
+  onRemoveLayer?: (layout: Layout, layer: number) => void;
+
+  /** Called when a cancelled gesture puts back an earlier root, naming the
+      layer it belongs to and -1 for the layout itself. */
+  onRestore?: (layout: Layout, layer: number, root: Node) => void;
 }
 
 /** Displays every scenario of a component side by side. */
@@ -123,11 +133,44 @@ export class ScenarioBoard extends React.Component<Properties> {
           {this.renderCondition(layout, index)}
           {this.renderControls(layout, index)}
         </div>
-        <LayoutCanvas layout={layout} selection={this.props.selection}
+        <LayoutCanvas root={layout.root} selection={this.props.selection}
           zoom={this.props.zoom} onSelect={this.props.onSelect}
-          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}/>
+          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}
+          onRestore={root => this.props.onRestore?.(layout, -1, root)}/>
+        {layout.overlays.map((overlay, layer) =>
+          this.renderLayer(layout, overlay, layer))}
+        {this.renderAddLayer(layout, index)}
         {this.renderProperties(layout, index)}
       </div>);
+  }
+
+  private renderLayer(layout: Layout, overlay: Node,
+      layer: number): JSX.Element {
+    return (
+      <div key={`layer-${layer}`} style={ScenarioBoard.STYLE.layer}>
+        <div style={ScenarioBoard.STYLE.caption}>
+          <span style={ScenarioBoard.STYLE.name}>{`Layer ${layer + 1}`}</span>
+          <button style={ScenarioBoard.STYLE.control} title='Delete layer'
+              onClick={() => this.props.onRemoveLayer?.(layout, layer)}>
+            {'\u00D7'}
+          </button>
+        </div>
+        <LayoutCanvas root={overlay} selection={this.props.selection}
+          zoom={this.props.zoom} onSelect={this.props.onSelect}
+          onChange={this.props.onChange} onRemove={this.props.onRemoveBox}
+          onRestore={root => this.props.onRestore?.(layout, layer, root)}/>
+      </div>);
+  }
+
+  private renderAddLayer(layout: Layout, index: number): JSX.Element {
+    if(index >= this.props.component.layouts.length - 1) {
+      return null;
+    }
+    return (
+      <button style={ScenarioBoard.STYLE.add}
+          onClick={() => this.props.onAddLayer?.(layout)}>
+        Add a layer
+      </button>);
   }
 
   private renderProperties(layout: Layout, index: number): JSX.Element {
@@ -218,6 +261,33 @@ export class ScenarioBoard extends React.Component<Properties> {
       display: 'flex',
       flexShrink: 0,
       gap: '4px'
+    },
+    layer: {
+      display: 'flex',
+      flexDirection: 'column' as 'column',
+      alignItems: 'flex-start',
+      gap: '4px'
+    },
+    caption: {
+      display: 'flex',
+      alignItems: 'center',
+      alignSelf: 'stretch',
+      gap: '8px'
+    },
+    name: {
+      flexGrow: 1,
+      fontSize: '11px',
+      color: '#808080'
+    },
+    add: {
+      alignSelf: 'flex-start',
+      padding: '4px 8px',
+      fontSize: '11px',
+      fontFamily: 'inherit',
+      color: '#684BC7',
+      border: '1px dashed #C8C8C8',
+      backgroundColor: '#FFFFFF',
+      cursor: 'pointer'
     },
     control: {
       width: '22px',

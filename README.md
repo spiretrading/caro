@@ -123,6 +123,23 @@ and it is dropped when the specification is written out: carrying no
 condition, a saved blank would match everything and, sitting last, would take
 precedence over every scenario before it.
 
+A scenario may carry layers: frames superimposed on its layout, occupying the
+same space. Each is drawn on a canvas of its own below the layout it covers,
+captioned and deleted on its own, which is how the XD boards stack them and
+the only arrangement that leaves both of them somewhere to be drawn into. 20
+of the 709 layouts in the existing specifications carry one, 26 layers in all,
+and they are nearly always the same shape: a spacer taking the room and a
+named component pinned to the edge it leaves over, which is how a
+specification says an action sheet or a save bar floats above a page. A layer
+is a tree of its own, so a box drawn into one is drawn into that one alone and
+deleting it leaves the layout beneath untouched.
+
+What order they stack in is not settled. Caro numbers them upwards from the
+layout and takes a later one to be drawn over an earlier one; the wiki
+describes layers as a z-priority indexed from zero, where a lower number takes
+priority, which is the opposite. Nothing composites them yet, so nothing turns
+on the answer until something does.
+
 Below each scenario's canvas sit its properties, the part of a layout that the
 tree cannot express, written as free text and stored verbatim. About a sixth
 of the layouts in the existing specifications carry a block, most of them a

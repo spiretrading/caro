@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Container, Layout, Node, Orientation, Reference,
+import { Container, Node, Orientation, Reference,
   SizePolicy } from '../layout';
 import { attach, detach, isPlaced, leaves, normalize, parentOf, Side,
   toOrientation } from './tree';
@@ -84,8 +84,8 @@ interface Guide {
 
 interface Properties {
 
-  /** The layout being edited. */
-  layout: Layout;
+  /** The root of the tree being drawn. */
+  root: Node;
 
   /** How much the canvas is magnified, 1 being its literal size. */
   zoom: number;
@@ -101,6 +101,9 @@ interface Properties {
 
   /** Called when the selected box is deleted from the canvas. */
   onRemove?: () => void;
+
+  /** Called when a cancelled gesture puts back an earlier root. */
+  onRestore?: (root: Node) => void;
 }
 
 /** A boundary a resize acts on: the box before it, and the box after it. */
@@ -155,7 +158,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   public render(): JSX.Element {
-    const root = this.props.layout.root;
+    const root = this.props.root;
     if(!(root instanceof Container)) {
       return (
         <div style={LayoutCanvas.STYLE.message}>
@@ -355,7 +358,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     }
     const guides = [] as Guide[];
     const aligned = [] as Node[];
-    const root = this.props.layout.root as Container;
+    const root = this.props.root as Container;
     for(const other of leaves(root)) {
       if(moving.indexOf(other) !== -1) {
         continue;
@@ -513,7 +516,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private gripFor(node: Node, side: Side): Grip {
-    const root = this.props.layout.root as Container;
+    const root = this.props.root as Container;
     const parent = parentOf(root, node);
     if(parent === null) {
       return null;
@@ -604,7 +607,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       LayoutCanvas.apply(edge.vertical,
         this.local(point.y - this.state.origin.y), true);
     }
-    normalize(this.props.layout.root);
+    normalize(this.props.root);
     this.props.onChange?.();
   }
 
@@ -748,7 +751,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private boxAt(point: Point): Node {
-    const root = this.props.layout.root as Container;
+    const root = this.props.root as Container;
     for(const node of leaves(root)) {
       const element = this.elements.get(node);
       if(element === undefined) {
@@ -764,7 +767,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private resolve(point: Point): Drop {
-    const root = this.props.layout.root as Container;
+    const root = this.props.root as Container;
     if(this.state.carried !== null) {
       const element = this.elements.get(this.state.carried);
       if(element !== undefined &&
@@ -843,7 +846,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private sideOf(target: Node, point: Point): Side {
-    const root = this.props.layout.root as Container;
+    const root = this.props.root as Container;
     const parent = parentOf(root, target);
     const orientation = (() => {
       if(parent === null) {
@@ -881,7 +884,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       x: this.bounds.left + this.container.clientLeft * this.props.zoom,
       y: this.bounds.top + this.container.clientTop * this.props.zoom
     };
-    this.snapshot = this.props.layout.root.clone();
+    this.snapshot = this.props.root.clone();
     this.settled = null;
     this.previous = null;
     this.attach();
@@ -961,7 +964,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           LayoutCanvas.distance(point, this.settled) < REVERSAL_DISTANCE) {
         return;
       }
-      const root = this.props.layout.root as Container;
+      const root = this.props.root as Container;
       if(isPlaced(root, this.state.carried, drop.target, drop.side)) {
         this.setState({drop});
         return;
@@ -1000,7 +1003,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       this.props.onChange?.();
       return;
     }
-    const root = this.props.layout.root as Container;
+    const root = this.props.root as Container;
     const node = this.build(region, root);
     if(drop === null) {
       root.children.push(node);
@@ -1017,7 +1020,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return;
     }
     this.detachListeners();
-    this.props.layout.root = this.snapshot;
+    this.props.onRestore?.(this.snapshot);
     this.setState({
       gesture: Gesture.NONE, carried: null, grab: null, size: null,
       drop: null, edge: null
