@@ -160,6 +160,47 @@ async function main(){
   check('with nothing left under it', await rows(),
     ['Main', 'Section1', '..default']);
 
+  // The panel is dragged wider or narrower by the grip on its edge.
+  const panelWidth = () => evaluate(
+    `parseInt(document.querySelector('[data-outline]').style.width)`);
+  const gripAt = () => evaluate(`(() => {
+    const r = document.querySelector('[data-grip]').getBoundingClientRect();
+    return {x: r.left + r.width / 2, y: r.top + 200};
+  })()`);
+  const started = await panelWidth();
+  check('the panel starts at its own width', started, 210);
+  let grip = await gripAt();
+  await drag(grip, {x: grip.x + 90, y: grip.y});
+  check('dragging the grip widens it', await panelWidth(), started + 90);
+  grip = await gripAt();
+  await drag(grip, {x: grip.x - 400, y: grip.y});
+  check('and it stops rather than closing altogether',
+    await panelWidth(), 120);
+  grip = await gripAt();
+  await drag(grip, {x: grip.x + 900, y: grip.y});
+  check('and stops before it swallows the board',
+    await panelWidth(), 520);
+
+  // A selected box is ringed clear of whatever it is painted.
+  await clickRow('Main');
+  await pause(300);
+  await clickNoted('10x10');
+  await pause(300);
+  const ring = await evaluate(`(() => {
+    const box = Array.from(
+      document.querySelector('[data-canvas]').children).find(
+        c => c.style.outline !== '' &&
+          c.style.boxShadow.indexOf('inset') !== -1);
+    const s = getComputedStyle(box);
+    return {colour: s.outlineColor, width: s.outlineWidth,
+      rule: s.boxShadow.indexOf('rgb(255, 255, 255)') !== -1};
+  })()`);
+  check('a selected box is ringed in the selection colour', ring.colour,
+    'rgb(104, 75, 199)');
+  check('thicker than the policy edge it sits inside', ring.width, '3px');
+  check('with a rule of white between the ring and the fill', ring.rule,
+    true);
+
   const banner = failures === 0 ? 'the outline reaches what the canvas cannot'
     : `${failures} FAILURES`;
   console.log('');

@@ -6,6 +6,13 @@ import { isBlank } from './scenarios';
 /** How far each level of the tree is indented, in pixels. */
 const INDENT = 12;
 
+/** How wide the panel is to begin with, in pixels. */
+const WIDTH = 210;
+
+/** How narrow and how wide the panel may be dragged. */
+const NARROWEST = 120;
+const WIDEST = 520;
+
 interface Properties {
 
   /** The sections of the specification, outermost first. */
@@ -32,6 +39,7 @@ interface Properties {
 
 interface State {
   open: Set<object>;
+  width: number;
 }
 
 /** Lists a whole specification as a tree of sections, scenarios, layers and
@@ -40,19 +48,53 @@ interface State {
 export class OutlinePanel extends React.Component<Properties, State> {
   constructor(props: Properties) {
     super(props);
-    this.state = {open: new Set<object>()};
+    this.state = {open: new Set<object>(), width: WIDTH};
+    this.grabbed = 0;
+    this.held = 0;
   }
 
   public render(): JSX.Element {
     return (
-      <div style={OutlinePanel.STYLE.panel} data-keeps-selection=''
+      <div style={{...OutlinePanel.STYLE.panel,
+          width: `${this.state.width}px`}} data-keeps-selection=''
           data-outline=''>
-        {this.props.sections.map(this.renderSection)}
+        <div style={OutlinePanel.STYLE.tree}>
+          {this.props.sections.map(this.renderSection)}
+        </div>
+        <div style={OutlinePanel.STYLE.grip} data-grip=''
+          title='Drag to widen' onMouseDown={this.onGrab}/>
       </div>);
   }
 
   public componentDidMount(): void {
     this.reveal(this.props.component);
+  }
+
+  public componentWillUnmount(): void {
+    this.release();
+  }
+
+  private grabbed: number;
+  private held: number;
+
+  private onGrab = (event: React.MouseEvent) => {
+    event.preventDefault();
+    this.grabbed = event.clientX;
+    this.held = this.state.width;
+    window.addEventListener('mousemove', this.onDrag);
+    window.addEventListener('mouseup', this.release);
+  }
+
+  private onDrag = (event: MouseEvent) => {
+    const width = this.held + event.clientX - this.grabbed;
+    this.setState({
+      width: Math.min(Math.max(width, NARROWEST), WIDEST)
+    });
+  }
+
+  private release = () => {
+    window.removeEventListener('mousemove', this.onDrag);
+    window.removeEventListener('mouseup', this.release);
   }
 
   public componentDidUpdate(previous: Properties): void {
@@ -339,15 +381,29 @@ export class OutlinePanel extends React.Component<Properties, State> {
 
   private static readonly STYLE = {
     panel: {
+      position: 'relative' as 'relative',
       flexShrink: 0,
       display: 'flex',
-      flexDirection: 'column' as 'column',
-      width: '210px',
-      padding: '12px 0',
       borderRight: '1px solid #C8C8C8',
       backgroundColor: '#FFFFFF',
-      overflow: 'auto' as 'auto',
       fontSize: '12px'
+    },
+    tree: {
+      flexGrow: 1,
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column' as 'column',
+      padding: '12px 0',
+      overflow: 'auto' as 'auto'
+    },
+    grip: {
+      position: 'absolute' as 'absolute',
+      top: 0,
+      bottom: 0,
+      right: '-3px',
+      width: '7px',
+      cursor: 'col-resize',
+      zIndex: 1
     },
     row: {
       display: 'flex',
