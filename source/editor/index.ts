@@ -5,5 +5,5 @@ export { ScenarioBoard } from './scenario_board';
 export { SectionPicker } from './section_picker';
 export { ensureBlank, isBlank, makeBlank, prune } from './scenarios';
 export { keepsSelection } from './selection';
-export { attach, contains, detach, leaves, normalize, parentOf,
-  Side } from './tree';
+export { assemble, attach, contains, detach, flatten, leaves, normalize,
+  parentOf, Placement, Side } from './tree';

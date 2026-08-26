@@ -1,5 +1,17 @@
 import { Container, Node, Orientation, SizePolicy } from '../layout';
 
+/** How far apart two edges may be and still count as the same seam. */
+const TOLERANCE = 0.5;
+
+/** A node and the place it occupies. */
+export interface Placement {
+  node: Node;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** Identifies the side of a box that a dropped box attaches to. */
 export enum Side {
   TOP = 'top',
@@ -87,6 +99,112 @@ export function attach(root: Container, node: Node, target: Node,
   })();
   parent.children.splice(index, 1, new Container(orientation, anchor.width,
     anchor.height, anchor.widthPolicy, anchor.heightPolicy, children));
+}
+
+/** Builds a tree out of nodes and the places they occupy, cutting the region
+    they cover into rows and columns. Returns null when they cannot be cut
+    apart, which only happens if they overlap. */
+export function assemble(placements: Placement[]): Node {
+  if(placements.length === 1) {
+    return placements[0].node;
+  }
+  const horizontal = seams(placements, 'y');
+  const vertical = seams(placements, 'x');
+  const axis = (() => {
+    if(horizontal.length >= vertical.length && horizontal.length > 0) {
+      return 'y' as 'y';
+    } else if(vertical.length > 0) {
+      return 'x' as 'x';
+    }
+    return null;
+  })();
+  if(axis === null) {
+    return null;
+  }
+  const positions = (() => {
+    if(axis === 'y') {
+      return horizontal;
+    }
+    return vertical;
+  })();
+  const children = [] as Node[];
+  for(const band of divide(placements, axis, positions)) {
+    const child = assemble(band);
+    if(child === null) {
+      return null;
+    }
+    children.push(child);
+  }
+  const orientation = (() => {
+    if(axis === 'y') {
+      return Orientation.COLUMN;
+    }
+    return Orientation.ROW;
+  })();
+  const container = new Container(orientation, 0, 0, SizePolicy.FIXED,
+    SizePolicy.FIXED, children);
+  normalize(container);
+  return container;
+}
+
+/** Splices a container's children into its parent when the two run the same
+    way, so that moving a group of boxes leaves no level behind. */
+export function flatten(root: Container, node: Node): void {
+  if(!(node instanceof Container)) {
+    return;
+  }
+  const parent = parentOf(root, node);
+  if(parent === null || parent.orientation !== node.orientation) {
+    return;
+  }
+  parent.children.splice(parent.children.indexOf(node), 1, ...node.children);
+}
+
+function spanOf(placement: Placement, axis: 'x' | 'y'): number {
+  if(axis === 'x') {
+    return placement.width;
+  }
+  return placement.height;
+}
+
+function seams(placements: Placement[], axis: 'x' | 'y'): number[] {
+  const edges = new Set<number>();
+  for(const placement of placements) {
+    edges.add(placement[axis]);
+    edges.add(placement[axis] + spanOf(placement, axis));
+  }
+  const low = Math.min(...placements.map(placement => placement[axis]));
+  const high = Math.max(...placements.map(placement =>
+    placement[axis] + spanOf(placement, axis)));
+  const found = [] as number[];
+  for(const edge of [...edges].sort((left, right) => left - right)) {
+    if(edge <= low + TOLERANCE || edge >= high - TOLERANCE) {
+      continue;
+    }
+    const straddles = placements.some(placement =>
+      placement[axis] < edge - TOLERANCE &&
+      placement[axis] + spanOf(placement, axis) > edge + TOLERANCE);
+    if(!straddles) {
+      found.push(edge);
+    }
+  }
+  return found;
+}
+
+function divide(placements: Placement[], axis: 'x' | 'y',
+    positions: number[]): Placement[][] {
+  const bands = [] as Placement[][];
+  let previous = -Infinity;
+  for(const position of [...positions, Infinity]) {
+    const band = placements.filter(placement =>
+      placement[axis] >= previous - TOLERANCE &&
+      placement[axis] < position - TOLERANCE);
+    if(band.length > 0) {
+      bands.push(band);
+    }
+    previous = position;
+  }
+  return bands;
 }
 
 /** Returns whether a node already sits against one side of a target, either

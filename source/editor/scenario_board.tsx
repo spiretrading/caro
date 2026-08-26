@@ -15,8 +15,8 @@ interface Properties {
   /** The component whose scenarios are shown. */
   component: Component;
 
-  /** The currently selected node, null when nothing is selected. */
-  selection: Node;
+  /** The boxes currently selected, empty when none are. */
+  selection: Node[];
 
   /** How much the canvases are magnified, 1 being their literal size. */
   zoom: number;
@@ -24,8 +24,9 @@ interface Properties {
   /** Called to magnify or shrink the canvases by a number of steps. */
   onZoom?: (steps: number) => void;
 
-  /** Called when a node is selected, with null when the selection clears. */
-  onSelect?: (node: Node) => void;
+  /** Called when the selection changes, adding to it rather than replacing
+      it when asked. */
+  onSelect?: (nodes: Node[], extend: boolean) => void;
 
   /** Called whenever a scenario's layout has been modified. */
   onChange?: () => void;

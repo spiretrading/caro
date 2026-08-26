@@ -196,6 +196,28 @@ field. A box carries its name centred as `<Name>` and shows nothing when
 unnamed; the properties panel names the selection and sets each of its axes to
 fixed, fill or fit, each choice carrying the colour it paints the box.
 
+Shift and a press adds a box to the selection or takes it back out, and what
+is selected is then moved, deleted and resized as one. A selection stays
+within a single canvas, because a gesture does. The properties panel steps
+aside while more than one box is selected: a name, a size and a pair of
+policies describe one box and say nothing of several.
+
+Moving several of them is a move. They need not be siblings or even share a
+container: they are measured where they lie, lifted out, rebuilt into one node
+arranged the way they were drawn, and dropped the way a single box is dropped.
+The rebuilding is the same cut into rows and columns that reads the legacy
+format, which is why it needs no rules of its own. A group landing somewhere
+that runs the same way as itself is spliced in rather than nested, so dragging
+the same boxes twice does not bury them a level deeper each time.
+
+Resizing several of them treats them as one box. The selection's bounds are
+the union of what is in it, and dragging an edge of that rectangle moves only
+the boxes sitting on it: the right edge widens the right-most boxes and leaves
+the rest as they are, the bottom edge lowers the bottom-most. A corner does
+both. Boxes inside the group never take room from one another, so the splitter
+applies exactly where the group meets what lies outside it, and a box that
+does not reach the edge being dragged is left alone.
+
 Dropping a box against the top or bottom of another places it as a sibling;
 dropping against the left or right nests both into a row, and the reverse
 inside a row. Containers left holding a single child collapse, and a root left

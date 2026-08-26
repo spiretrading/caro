@@ -3,8 +3,8 @@ import { Node, Reference, SizePolicy } from '../layout';
 
 interface Properties {
 
-  /** The node being edited, null when nothing is selected. */
-  node: Node;
+  /** The boxes currently selected, empty when none are. */
+  selection: Node[];
 
   /** Called when a property of the node changes. */
   onChange?: () => void;
@@ -16,7 +16,7 @@ interface Properties {
 /** Displays the properties of the selected node. */
 export class NodeProperties extends React.Component<Properties> {
   public render(): JSX.Element {
-    if(this.props.node === null) {
+    if(this.props.selection.length === 0) {
       return (
         <div style={NodeProperties.STYLE.panel} data-keeps-selection=''>
           <div style={NodeProperties.STYLE.empty}>
@@ -24,7 +24,15 @@ export class NodeProperties extends React.Component<Properties> {
           </div>
         </div>);
     }
-    const node = this.props.node;
+    if(this.props.selection.length > 1) {
+      return (
+        <div style={NodeProperties.STYLE.panel} data-keeps-selection=''>
+          <div style={NodeProperties.STYLE.empty}>
+            {`${this.props.selection.length} boxes selected.`}
+          </div>
+        </div>);
+    }
+    const node = this.props.selection[0];
     return (
       <div style={NodeProperties.STYLE.panel} data-keeps-selection=''>
         <div style={NodeProperties.STYLE.heading}>Box</div>
@@ -80,27 +88,27 @@ export class NodeProperties extends React.Component<Properties> {
   }
 
   private onName = (event: React.ChangeEvent<HTMLInputElement>) => {
-    (this.props.node as Reference).name = event.target.value;
+    (this.props.selection[0] as Reference).name = event.target.value;
     this.props.onChange?.();
   }
 
   private onWidthPolicy = (policy: SizePolicy) => {
-    this.props.node.widthPolicy = policy;
+    this.props.selection[0].widthPolicy = policy;
     this.props.onChange?.();
   }
 
   private onHeightPolicy = (policy: SizePolicy) => {
-    this.props.node.heightPolicy = policy;
+    this.props.selection[0].heightPolicy = policy;
     this.props.onChange?.();
   }
 
   private onWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
-    this.props.node.width = Number(event.target.value);
+    this.props.selection[0].width = Number(event.target.value);
     this.props.onChange?.();
   }
 
   private onHeight = (event: React.ChangeEvent<HTMLInputElement>) => {
-    this.props.node.height = Number(event.target.value);
+    this.props.selection[0].height = Number(event.target.value);
     this.props.onChange?.();
   }
 

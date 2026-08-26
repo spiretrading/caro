@@ -14,7 +14,7 @@ interface State {
   file: SpecificationFile;
   board: Board;
   component: Component;
-  selection: Node;
+  selection: Node[];
   zoom: number;
   revision: number;
   status: string;
@@ -30,7 +30,7 @@ export class Application extends React.Component<{}, State> {
       file: null,
       board,
       component,
-      selection: null,
+      selection: [],
       zoom: 1,
       revision: 0,
       status: ''
@@ -52,7 +52,7 @@ export class Application extends React.Component<{}, State> {
           {this.renderBody()}
         </div>
         {this.state.component !== null &&
-          <NodeProperties node={this.state.selection}
+          <NodeProperties selection={this.state.selection}
             onChange={this.onChange} onRemove={this.onRemove}/>}
       </div>);
   }
@@ -69,10 +69,11 @@ export class Application extends React.Component<{}, State> {
 
   private onMouseDown = (event: MouseEvent) => {
     Application.release(event.target);
-    if(this.state.selection === null || keepsSelection(event.target)) {
+    if(this.state.selection.length === 0 || event.shiftKey ||
+        keepsSelection(event.target)) {
       return;
     }
-    this.setState({selection: null});
+    this.setState({selection: []});
   }
 
   private static release(target: EventTarget): void {
@@ -88,11 +89,11 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
-    if(this.state.selection === null || Application.isTyping()) {
+    if(this.state.selection.length === 0 || Application.isTyping()) {
       return;
     }
     if(event.key === 'Escape') {
-      this.setState({selection: null});
+      this.setState({selection: []});
       return;
     }
     if(event.key !== 'Delete' && event.key !== 'Backspace') {
@@ -208,7 +209,7 @@ export class Application extends React.Component<{}, State> {
       file: null,
       board,
       component,
-      selection: null,
+      selection: [],
       status: 'Started a new specification.'
     });
   }
@@ -240,7 +241,7 @@ export class Application extends React.Component<{}, State> {
       if(component !== null) {
         ensureBlank(component);
       }
-      this.setState({file, board, component, selection: null, status});
+      this.setState({file, board, component, selection: [], status});
     } catch(error) {
       this.setState({status: `${error}`});
     }
@@ -248,7 +249,7 @@ export class Application extends React.Component<{}, State> {
 
   private onSelectSection = (component: Component) => {
     ensureBlank(component);
-    this.setState({component, selection: null});
+    this.setState({component, selection: []});
   }
 
   private onRemoveScenario = (layout: Layout) => {
@@ -259,7 +260,7 @@ export class Application extends React.Component<{}, State> {
     }
     layouts.splice(index, 1);
     this.setState({
-      selection: null,
+      selection: [],
       revision: this.state.revision + 1,
       status: 'Removed a scenario.'
     });
@@ -285,7 +286,7 @@ export class Application extends React.Component<{}, State> {
     components.splice(this.componentIndex() + 1, 0, component);
     this.setState({
       component,
-      selection: null,
+      selection: [],
       revision: this.state.revision + 1,
       status: `Added ${component.name}.`
     });
@@ -301,7 +302,7 @@ export class Application extends React.Component<{}, State> {
     const component = components[Math.min(index, components.length - 1)];
     this.setState({
       component,
-      selection: null,
+      selection: [],
       revision: this.state.revision + 1,
       status: 'Removed a section.'
     });
@@ -331,8 +332,21 @@ export class Application extends React.Component<{}, State> {
     this.setState({revision: this.state.revision + 1});
   }
 
-  private onSelect = (node: Node) => {
-    this.setState({selection: node});
+  private onSelect = (nodes: Node[], extend: boolean) => {
+    if(!extend) {
+      this.setState({selection: nodes});
+      return;
+    }
+    const selection = [...this.state.selection];
+    for(const node of nodes) {
+      const index = selection.indexOf(node);
+      if(index === -1) {
+        selection.push(node);
+      } else {
+        selection.splice(index, 1);
+      }
+    }
+    this.setState({selection});
   }
 
   private onChange = () => {
@@ -344,16 +358,33 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onRemove = () => {
-    const root = this.rootOf(this.state.selection);
-    if(root === null) {
+    const roots = [] as Container[];
+    for(const node of this.state.selection) {
+      const root = this.rootOf(node);
+      if(root === null) {
+        continue;
+      }
+      detach(root, node);
+      if(roots.indexOf(root) === -1) {
+        roots.push(root);
+      }
+    }
+    if(roots.length === 0) {
       return;
     }
-    detach(root, this.state.selection);
-    normalize(root);
+    for(const root of roots) {
+      normalize(root);
+    }
+    const status = (() => {
+      if(this.state.selection.length === 1) {
+        return 'Removed a box.';
+      }
+      return `Removed ${this.state.selection.length} boxes.`;
+    })();
     this.setState({
-      selection: null,
+      selection: [],
       revision: this.state.revision + 1,
-      status: 'Removed a box.'
+      status
     });
   }
 
@@ -396,7 +427,7 @@ export class Application extends React.Component<{}, State> {
   private onRemoveLayer = (layout: Layout, layer: number) => {
     layout.overlays.splice(layer, 1);
     this.setState({
-      selection: null,
+      selection: [],
       revision: this.state.revision + 1,
       status: 'Removed a layer.'
     });
