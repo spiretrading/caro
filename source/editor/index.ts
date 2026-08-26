@@ -1,6 +1,7 @@
 export { boxAt, copyOf, extentOf, push } from './arrange';
 export { Clipboard, copyBoxes, copyScenario } from './clipboard';
-export { LayoutCanvas } from './layout_canvas';
+export { LayoutCanvas, Reveal } from './layout_canvas';
+export { OutlinePanel } from './outline_panel';
 export { NodeProperties } from './node_properties';
 export { PropertiesEditor } from './properties_editor';
 export { ScenarioBoard } from './scenario_board';

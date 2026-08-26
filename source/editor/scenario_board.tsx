@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Box, Component, Layout } from '../layout';
-import { LayoutCanvas } from './layout_canvas';
+import { LayoutCanvas, Reveal } from './layout_canvas';
 import { PropertiesEditor } from './properties_editor';
 
 interface Anchor {
@@ -20,6 +20,9 @@ interface Properties {
 
   /** The boxes of the canvas being worked in, null when none has been. */
   active: Box[];
+
+  /** The box to bring into view, null when none has been asked for. */
+  reveal: Reveal;
 
   /** How much the canvases are magnified, 1 being their literal size. */
   zoom: number;
@@ -140,6 +143,7 @@ export class ScenarioBoard extends React.Component<Properties> {
         <LayoutCanvas boxes={layout.boxes}
           selection={this.props.selection} zoom={this.props.zoom}
           active={layout.boxes === this.props.active}
+          reveal={this.props.reveal}
           onSelect={this.props.onSelect} onChange={this.props.onChange}
           onRemove={this.props.onRemoveBox}/>
         {layout.overlays.map((overlay, layer) =>
@@ -162,6 +166,7 @@ export class ScenarioBoard extends React.Component<Properties> {
         </div>
         <LayoutCanvas boxes={overlay} selection={this.props.selection}
           zoom={this.props.zoom} active={overlay === this.props.active}
+          reveal={this.props.reveal}
           onSelect={this.props.onSelect} onChange={this.props.onChange}
           onRemove={this.props.onRemoveBox}/>
       </div>);

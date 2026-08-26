@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Box, SizePolicy } from '../layout';
 import { boxAt, extentOf, push } from './arrange';
+import { POLICY_COLOR, POLICY_EDGE, POLICY_INK } from './palette';
 
 /** The distance a press must cover before it draws or drags, in pixels of
     screen. */
@@ -62,6 +63,12 @@ interface Guide {
   offset: number;
 }
 
+/** A request to bring a box into view, made afresh each time one is asked
+    for so that asking twice for the same box is two requests. */
+export interface Reveal {
+  box: Box;
+}
+
 /** A box and the place it held when a gesture began. */
 interface Held {
   box: Box;
@@ -99,6 +106,9 @@ interface Properties {
   /** Whether this is the canvas being worked in, the one a paste goes
       into. */
   active: boolean;
+
+  /** The box to bring into view, null when none has been asked for. */
+  reveal: Reveal;
 
   /** Called when the selection changes, adding to it rather than replacing
       it when asked, and naming the boxes of the canvas it changed in. */
@@ -163,7 +173,12 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       </div>);
   }
 
+  public componentDidMount(): void {
+    this.show();
+  }
+
   public componentDidUpdate(): void {
+    this.show();
     if(this.state.gesture !== Gesture.NONE || this.pointer === null ||
         this.container === null) {
       return;
@@ -180,6 +195,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private container: HTMLDivElement;
+  private elements = new WeakMap<Box, HTMLDivElement>();
+  private shown: Reveal = null;
   private pointer: {clientX: number, clientY: number};
   private held: Held[];
   private settled: Held[];
@@ -188,6 +205,23 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private count: number;
   private extend: boolean;
   private origin: Point;
+
+  /** Scrolls a box asked for into view, once for each time it is asked
+      for. Every canvas is asked, and the one holding the box answers. */
+  private show(): void {
+    if(this.props.reveal === this.shown) {
+      return;
+    }
+    this.shown = this.props.reveal;
+    if(this.props.reveal === null) {
+      return;
+    }
+    const element = this.elements.get(this.props.reveal.box);
+    if(element === undefined || element === null) {
+      return;
+    }
+    element.scrollIntoView({block: 'nearest', inline: 'nearest'});
+  }
 
   /** Returns the marking that sets the canvas being worked in apart from
       the rest. An outline is used rather than a border, since the border is
@@ -227,6 +261,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     })();
     return (
       <div key={this.keyOf(box)} data-keeps-selection=''
+          ref={element => this.elements.set(box, element)}
           style={{...LayoutCanvas.STYLE.box,
             left: `${box.x}px`, top: `${box.y}px`,
             width: `${box.width}px`, height: `${box.height}px`,
@@ -746,15 +781,15 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     const same = box.widthPolicy === box.heightPolicy;
     const across = (() => {
       if(same) {
-        return LayoutCanvas.POLICY_EDGE[box.widthPolicy];
+        return POLICY_EDGE[box.widthPolicy];
       }
-      return LayoutCanvas.POLICY_COLOR[box.widthPolicy];
+      return POLICY_COLOR[box.widthPolicy];
     })();
     const down = (() => {
       if(same) {
-        return LayoutCanvas.POLICY_EDGE[box.heightPolicy];
+        return POLICY_EDGE[box.heightPolicy];
       }
-      return LayoutCanvas.POLICY_COLOR[box.heightPolicy];
+      return POLICY_COLOR[box.heightPolicy];
     })();
     const boxShadow = `inset ${EDGE}px 0 0 0 ${across}, ` +
       `inset -${EDGE}px 0 0 0 ${across}, inset 0 ${EDGE}px 0 0 ${down}, ` +
@@ -763,36 +798,15 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return {boxShadow};
     }
     return {boxShadow,
-      backgroundColor: LayoutCanvas.POLICY_COLOR[box.widthPolicy]};
+      backgroundColor: POLICY_COLOR[box.widthPolicy]};
   }
 
   private static inkFor(box: Box) {
     if(box.widthPolicy !== box.heightPolicy) {
       return {color: '#000000'};
     }
-    return {color: LayoutCanvas.POLICY_INK[box.widthPolicy]};
+    return {color: POLICY_INK[box.widthPolicy]};
   }
-
-  private static readonly POLICY_COLOR = {
-    [SizePolicy.FIXED]: '#FFB800',
-    [SizePolicy.FILL]: '#0066FF',
-    [SizePolicy.FIT]: '#00BF2D',
-    [SizePolicy.REPEAT]: '#744BFF'
-  };
-
-  private static readonly POLICY_EDGE = {
-    [SizePolicy.FIXED]: '#B28100',
-    [SizePolicy.FILL]: '#0047B2',
-    [SizePolicy.FIT]: '#008620',
-    [SizePolicy.REPEAT]: '#5135B2'
-  };
-
-  private static readonly POLICY_INK = {
-    [SizePolicy.FIXED]: '#000000',
-    [SizePolicy.FILL]: '#FFFFFF',
-    [SizePolicy.FIT]: '#000000',
-    [SizePolicy.REPEAT]: '#FFFFFF'
-  };
 
   private static readonly STYLE = {
     container: {

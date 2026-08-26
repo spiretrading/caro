@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
-  keepsSelection, makeBlank, NodeProperties, prune, push, ScenarioBoard,
-  SectionPicker } from './editor';
+  keepsSelection, makeBlank, NodeProperties, OutlinePanel, prune, push,
+  Reveal, ScenarioBoard, SectionPicker } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -15,6 +15,7 @@ interface State {
   component: Component;
   selection: Box[];
   active: Box[];
+  reveal: Reveal;
   zoom: number;
   revision: number;
   status: string;
@@ -32,6 +33,7 @@ export class Application extends React.Component<{}, State> {
       component,
       selection: [],
       active: null,
+      reveal: null,
       zoom: 1,
       revision: 0,
       status: ''
@@ -48,6 +50,12 @@ export class Application extends React.Component<{}, State> {
     }
     return (
       <div style={Application.STYLE.container}>
+        {this.state.component !== null &&
+          <OutlinePanel sections={this.state.board.components}
+            component={this.state.component} active={this.state.active}
+            selection={this.state.selection}
+            onSection={this.onSelectSection} onActivate={this.onActivate}
+            onReveal={this.onReveal}/>}
         <div style={Application.STYLE.content}>
           {this.renderToolbar()}
           {this.renderBody()}
@@ -201,7 +209,7 @@ export class Application extends React.Component<{}, State> {
       return (
         <ScenarioBoard component={this.state.component}
           selection={this.state.selection} active={this.state.active}
-          onSelect={this.onSelect}
+          reveal={this.state.reveal} onSelect={this.onSelect}
           onChange={this.onChange}
           onRemoveScenario={this.onRemoveScenario}
           onCopyScenario={this.onCopyScenario}
@@ -354,6 +362,21 @@ export class Application extends React.Component<{}, State> {
   private onProperties = (layout: Layout, properties: string) => {
     layout.properties = properties;
     this.setState({revision: this.state.revision + 1});
+  }
+
+  private onActivate = (component: Component, boxes: Box[]) => {
+    ensureBlank(component);
+    this.setState({component, active: boxes, selection: []});
+  }
+
+  private onReveal = (component: Component, box: Box) => {
+    ensureBlank(component);
+    this.setState({
+      component,
+      selection: [box],
+      active: Application.holderIn(component, box),
+      reveal: {box}
+    });
   }
 
   private onCopy = (event: KeyboardEvent) => {
@@ -545,7 +568,12 @@ export class Application extends React.Component<{}, State> {
   /** Returns the list of boxes a box belongs to, which is a layout's own or
       one of its layers'. */
   private holderOf(box: Box): Box[] {
-    for(const layout of this.state.component.layouts) {
+    return Application.holderIn(this.state.component, box);
+  }
+
+  /** Returns the list of boxes a box belongs to within a section. */
+  private static holderIn(component: Component, box: Box): Box[] {
+    for(const layout of component.layouts) {
       if(layout.boxes.indexOf(box) !== -1) {
         return layout.boxes;
       }
