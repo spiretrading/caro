@@ -34,6 +34,18 @@ const DELETE_INSET = 10;
 /** The smallest box that has room for a delete control. */
 const DELETE_ROOM = 44;
 
+/** How wide the delete control is drawn. */
+const DELETE_DIAMETER = 18;
+
+/** How large the glyph inside the delete control is drawn. */
+const GLYPH_SIZE = 13;
+
+/** How large the name inside a box is drawn. */
+const LABEL_SIZE = 12;
+
+/** How large the prompt on an empty canvas is drawn. */
+const HINT_SIZE = 13;
+
 /** How far apart two edges may be and still count as aligned. */
 const ALIGN_TOLERANCE = 0.5;
 
@@ -163,7 +175,10 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           {this.renderMarker()}
           {this.state.guides.map(this.renderGuide)}
           {root.children.length === 0 &&
-            <div style={LayoutCanvas.STYLE.hint}>Drag to draw a box.</div>}
+            <div style={{...LayoutCanvas.STYLE.hint,
+              fontSize: `${this.local(HINT_SIZE)}px`}}>
+              Drag to draw a box.
+            </div>}
         </div>
         {this.renderCarried()}
       </React.Fragment>);
@@ -252,7 +267,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
             ...selection, ...phantom, ...paint, ...alignment, ...cursor}}>
         {label !== '' &&
           <span style={{...LayoutCanvas.STYLE.label,
-            ...LayoutCanvas.inkFor(node)}}>{label}</span>}
+            ...LayoutCanvas.inkFor(node),
+            fontSize: `${this.local(LABEL_SIZE)}px`}}>{label}</span>}
         {this.renderDelete(node)}
       </div>);
   }
@@ -271,7 +287,13 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return null;
     }
     return (
-      <button style={LayoutCanvas.STYLE.remove} title='Delete'
+      <button style={{...LayoutCanvas.STYLE.remove,
+          top: `${this.local(DELETE_INSET)}px`,
+          right: `${this.local(DELETE_INSET)}px`,
+          width: `${this.local(DELETE_DIAMETER)}px`,
+          height: `${this.local(DELETE_DIAMETER)}px`,
+          borderRadius: `${this.local(DELETE_DIAMETER / 2)}px`,
+          fontSize: `${this.local(GLYPH_SIZE)}px`}} title='Delete'
         onMouseDown={this.onRemove}>{'\u00D7'}</button>);
   }
 

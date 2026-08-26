@@ -221,6 +221,15 @@ whatever the canvas is magnified to, which is what makes a box a single pixel
 tall reachable at all -- at four times it is four pixels of screen, and four
 pixels of drag move it by one.
 
+Names, the prompt on an empty canvas and the control that deletes a box are
+drawn at a fixed size on screen instead of being magnified with the drawing.
+A name longer than its box is cut off, and since magnifying grows the box on
+screen while leaving the name alone, magnifying is how the rest of it is read.
+Magnifying the name along with the box would hold the two in the same
+proportion and reveal nothing. It also keeps the delete control the size of a
+control: the room a box needs to carry one is measured in screen pixels, so a
+box magnified until it has room now draws one that fits in it.
+
 Magnifying holds still whatever sits under the cursor, or under the middle of
 the board when the toolbar drives it. It does that by measuring the element
 under that point before and after, and correcting the scroll by the
