@@ -24,18 +24,22 @@ Tauri later requires no change to the code.
 **TypeScript and React 17**, matching the conventions and versions used by
 the Web Portal, so `dali` drops in unchanged.
 
-**Draw, then snap.** A drawn rectangle is resolved into a tree edit at the
-moment of the gesture, while the enclosing cell, the drag origin and the
-nearby edges are all still known. The document is always a valid tree; there
-is no state holding an unreconciled rectangle. Empty space is drawn as a box
-like anything else, one left unnamed; caro never conjures a box to fill a gap
-it finds, because a gap is a mistake to be reported rather than papered over.
+**Draw, then leave it.** A drawn rectangle is a box at the coordinates it
+was drawn at, and it stays there. Nothing is resolved into a structure at the
+moment of the gesture, because there is no structure to resolve it into.
+Empty space is drawn as a box like anything else, one left unnamed; caro
+never conjures a box to fill a gap it finds, because a gap is a mistake to be
+reported rather than papered over.
 
-**A hierarchical file format.** Layouts are trees of rows and columns rather
-than absolute coordinates, matching what `dali`, flexbox and Qt box layouts
-all implement. Coordinates become derived rather than authored, so diffs are
-structural and small. All 735 frames across the 109 readable specifications
-convert to this form without a single failure.
+**A flat file format.** A layout is a list of boxes, each carrying its own
+`x` and `y`. Coordinates are authored rather than derived, which is the only
+form that can hold a layout with a gap in it: a tree of rows and columns has
+nowhere to put one, so a format built on trees cannot record the mistake it
+is caro's job to report. The row-and-column tree that `dali`, flexbox and Qt
+box layouts all implement is recovered from the boxes by whatever needs it,
+rather than being the thing that is stored. All 735 frames across the 109
+readable specifications are already in this form: it is what `xd_parser`
+emits.
 
 ## Building
 
@@ -43,16 +47,34 @@ convert to this form without a single failure.
     npm run build
     npm start
 
-`npm start` serves the app on `http://localhost:8080`. It must be served over
-localhost or https: the File System Access API is unavailable on `file://`,
-and is only implemented by Chrome and Edge.
+`npm start` serves the app on `http://localhost:8080`, rebuilding as the
+source changes. It must be served over localhost or https: the File System
+Access API is unavailable on `file://`, and is only implemented by Chrome and
+Edge. `npm run build` writes `application/bundle.js` instead, which is a
+snapshot rather than a live build. The toolbar carries the time the build on
+screen was compiled at, so which of the two is running is never in doubt.
+
+## Testing
+
+    npm test
+
+Suites ending in `_test` run against the compiled source in node. The rest
+drive the app in a browser, so they need the development server and a browser
+listening for the debugging protocol:
+
+    npm start
+    msedge --headless --remote-debugging-port=9222 about:blank
+
+A few open converted specifications from `caro_specs` beside this repository,
+or wherever `CARO_SPECS` points; they report themselves skipped when it is
+not there. A single suite runs on its own with `node tests/<suite>.js`.
 
 ## Using
 
-Click **Open** and choose a specification. A file in the legacy flat box
-format emitted by `xd_parser` is converted on load, so an existing
-specification opens directly; **Save** writes it back in the hierarchical
-format, asking where to put a specification that has no file yet.
+Click **Open** and choose a specification. A file in the flat box format
+emitted by `xd_parser` opens directly, since caro records the same thing;
+**Save** writes it back, asking where to put a specification that has no file
+yet.
 
 ## Format
 
@@ -63,19 +85,14 @@ format, asking where to put a specification that has no file yet.
         layouts: Layout[]            ascending priority
           condition: string          empty for the default
           properties: string         free text, may be empty
-          root: Node
-          overlays: Node[]           ascending layer order
+          boxes: Box[]
+          overlays: Box[][]          ascending layer order
 
-A `Node` is one of:
-
-- `container` -- `orientation` of `row` or `column`, plus `children` in
-  visual order.
-- `reference` -- a `name` naming another component in the board.
-- `spacer` -- empty space between siblings.
-
-Every node carries a `width` and `height` in pixels as drawn, a
-`widthPolicy` and `heightPolicy` of `fixed`, `fill`, `fit` or `repeat`, and
-an optional `repeatDirection`.
+A `Box` carries a `name`, naming another component in the board and empty
+when the box is only space; an `x` and `y` in pixels from the layout's top
+left; a `width` and `height` in pixels as drawn; a `widthPolicy` and
+`heightPolicy` of `fixed`, `fill`, `fit` or `repeat`; and an optional
+`repeatDirection`.
 
 A `fixed` size is a literal value taken from the visual, a `fill` size takes
 the available space and shares it equally between siblings, and a `fit` size
@@ -132,8 +149,8 @@ of the 709 layouts in the existing specifications carry one, 26 layers in all,
 and they are nearly always the same shape: an unnamed box taking the room and
 a named component pinned to the edge it leaves over, which is how a
 specification says an action sheet or a save bar floats above a page. A layer
-is a tree of its own, so a box drawn into one is drawn into that one alone and
-deleting it leaves the layout beneath untouched.
+holds boxes of its own, so a box drawn into one is drawn into that one alone
+and deleting it leaves the layout beneath untouched.
 
 What order they stack in is not settled. Caro numbers them upwards from the
 layout and takes a later one to be drawn over an earlier one; the wiki
@@ -142,11 +159,11 @@ priority, which is the opposite. Nothing composites them yet, so nothing turns
 on the answer until something does.
 
 Below each scenario's canvas sit its properties, the part of a layout that the
-tree cannot express, written as free text and stored verbatim. About a sixth
+boxes cannot express, written as free text and stored verbatim. About a sixth
 of the layouts in the existing specifications carry a block, most of them a
 line or two, either properties of the layout itself or properties indented
-under the name of one of its boxes. They are not called constraints: the tree
-already carries the layout's constraints in its policies and sizes, and only
+under the name of one of its boxes. They are not called constraints: the boxes
+already carry the layout's constraints in their policies and sizes, and only
 about half of what these blocks hold constrains anything, the rest binding
 content, animating, or positioning. They are not parsed either, because a
 value reaches across the specification and into runtime state, naming another
@@ -166,40 +183,37 @@ drop would make of it,
 and drag a box's edge to resize it, or a corner to resize both axes at once,
 down to a single pixel; a box you want gone is deleted rather than collapsed.
 
-The boundary between two boxes belongs to both of them, so dragging it is a
-splitter: one box grows by exactly what the other gives up and the total is
-unchanged, clamping when either reaches a pixel. Because both sizes are
-computed from the extents captured when the drag began, dragging past the
-clamp and back restores them exactly. Only the outer edges of a stack resize
-a box on their own, and they grow the container with it. An edge with nothing
-across it offers no handle at all rather than a control that silently moves
-the opposite edge: the leading edge of a first child, every cross-axis leading
-edge, and any boundary against a container, whose size is derived from its
-contents and would be overwritten. A resize never changes a policy; size and
-policy are independent.
+Every edge of every box resizes it, and the press that takes hold of an edge
+also selects the box, so an edge answers the first time it is aimed at rather
+than the second. Eight pixels either side of an edge take hold of it. A box
+the cursor is inside is asked before one it is merely beside, which is what
+decides the edge two touching boxes share, and a box reaches past its own
+edges only over the empty canvas next to it, so drawing beside one does not
+seize it. The middle third of every box is left as somewhere to pick it up by
+rather than somewhere to resize it from, which is what keeps a small box
+draggable. A resize never changes a policy; size and policy are independent.
 While a box is moved or resized, any edge of it that lines up with an edge of
 another box draws a red line across the canvas along that edge, and every box
-that line touches is tinted and outlined so it is clear which boxes the line
-connects. A drag measures the box where it actually is, under the cursor,
-never where it would land if let go. Those are the same box, and a box cannot
-be aligned with itself: measuring the landing place drew a guide between the
-box and its own preview, and drew it always, since a box that has landed meets
-its neighbours by construction. Overlays are
-positioned against the canvas's padding box rather than its bounding
-rectangle, since an absolutely positioned child measures from inside the
-border; measuring from the bounding rectangle draws every overlay a border
-width off. Escape cancels
-a gesture. Delete or Backspace removes the selected box, as
-does the control on the box itself and the button in the properties panel. A
-press anywhere clears the selection, except on a box or inside the properties
-panel, which keeps it because its Delete button acts on it; Escape clears it
-too once no gesture is running. A press outside the field holding focus drops
-that focus, so a box picked after typing in a condition or a properties block
-still answers the keyboard, which it otherwise would not: the canvas
-suppresses the default on its presses, and that leaves focus sitting in the
-field. A box carries its name centred as `<Name>` and shows nothing when
-unnamed; the properties panel names the selection and sets each of its axes to
-fixed, fill or fit, each choice carrying the colour it paints the box.
+that line touches is outlined so it is clear which boxes the line connects. A
+drag measures the box where it actually is, under the cursor, never where it
+would land if let go. Those are the same box, and a box cannot be aligned with
+itself: measuring the landing place drew a guide between the box and its own
+preview, and drew it always, since a box that has landed meets its neighbours
+by construction. Overlays are positioned against the canvas's padding box
+rather than its bounding rectangle, since an absolutely positioned child
+measures from inside the border; measuring from the bounding rectangle draws
+every overlay a border width off. Escape cancels a gesture. Delete or
+Backspace removes the selected box, as does the control on the box itself and
+the button in the properties panel. A press anywhere clears the selection,
+except on a box or inside the properties panel, which keeps it because its
+Delete button acts on it; Escape clears it too once no gesture is running. A
+press outside the field holding focus drops that focus, so a box picked after
+typing in a condition or a properties block still answers the keyboard, which
+it otherwise would not: the canvas suppresses the default on its presses, and
+that leaves focus sitting in the field. A box carries its name centred as
+`<Name>` and shows nothing when unnamed; the properties panel names the
+selection and sets each of its axes to fixed, fill or fit, each choice
+carrying the colour it paints the box.
 
 Shift and a press adds a box to the selection or takes it back out, and what
 is selected is then moved, deleted and resized as one. A selection stays
@@ -207,13 +221,8 @@ within a single canvas, because a gesture does. The properties panel steps
 aside while more than one box is selected: a name, a size and a pair of
 policies describe one box and say nothing of several.
 
-Moving several of them is a move. They need not be siblings or even share a
-container: they are measured where they lie, lifted out, rebuilt into one node
-arranged the way they were drawn, and dropped the way a single box is dropped.
-The rebuilding is the same cut into rows and columns that reads the legacy
-format, which is why it needs no rules of its own. A group landing somewhere
-that runs the same way as itself is spliced in rather than nested, so dragging
-the same boxes twice does not bury them a level deeper each time. What follows
+Moving several of them is a move. Each travels by the distance the cursor
+has, so the group keeps its shape and needs no rules of its own. What follows
 the cursor is the group as it stands, each of its boxes drawn at its own size,
 rather than one rectangle the size of all of them: the point of picking up
 several boxes is that you can still tell which ones you have.
@@ -222,40 +231,39 @@ Resizing several of them treats them as one box. The selection's bounds are
 the union of what is in it, and dragging an edge of that rectangle moves only
 the boxes sitting on it: the right edge widens the right-most boxes and leaves
 the rest as they are, the bottom edge lowers the bottom-most. A corner does
-both. Boxes inside the group never take room from one another, so the splitter
-applies exactly where the group meets what lies outside it, and a box that
+both. Boxes inside the group never take room from one another, and a box that
 does not reach the edge being dragged is left alone.
 
-Dropping a box against the top or bottom of another places it as a sibling;
-dropping against the left or right nests both into a row, and the reverse
-inside a row. Containers left holding a single child collapse, and a root left
-wrapping a lone container absorbs it, so the tree stays canonical no matter how
-much a box is dragged around.
+A box goes where it is put, and what it lands on gives way rather than taking
+it in: no two boxes may cover the same space, so a box carried onto another
+shoves that one to the nearest place clear of it, whichever of the four costs
+it the least travel and none of which is off the top or left of the canvas. A
+box holds its ground until it has been covered past its middle, measured
+across whichever axis the two are least deeply into each other, since that is
+the one they are meeting along. Without that a box fled the moment it was
+touched, which made lining two of them up a fight; with it a box can be
+brought right up against another and left there.
 
 A drag shows what dropping would do. The box travels with the cursor and the
 layout behind it reflows into the arrangement it would have on release, so
 what is on screen when the button comes up is what stays.
 
-Doing that used to be a fight. A box nested into a row halves its width, that
-moves the geometry out from under the cursor, the cursor is then over
-something else, and that nests it somewhere else again. Damping held it down
--- a settle distance, a reversal distance, a test for whether a box was
-already where it was about to be put -- and all of it was treating a symptom.
-What actually cures it is resolving the drag against geometry held still from
-the moment the box was picked up: the reflow moves the boxes, but not the
-rectangles the placement is computed from. The loop is cut rather than
-damped, so the placement cannot change unless the cursor does, and nesting two
-full width boxes into a row and halving both of them leaves the drag exactly
-where it was.
+What is shown is only ever a preview. Every box's place is remembered when a
+gesture begins and put back before the next frame is worked out, so what gives
+way is decided by where the carried box is now rather than by the path the
+cursor took to get there. Without that a box shoved aside on the way past
+stayed shoved after the box that shoved it had moved on, and a drag that
+wandered could disorder a layout for good. Carrying a box back where it came
+from, or pressing Escape, leaves the layout exactly as it was found.
 
-Where a box lands is decided by the middle of the box rather than by the
-cursor, and it goes on the side of its new neighbour that it came from: the
-larger of the two distances between the centres picks the axis, and its sign
-picks the side. Dragging one box onto another therefore pushes that one aside
-in the direction of travel. The same rule reads a drawn rectangle, from the
-middle of what was drawn. Nothing is measured against edge zones any more,
-which is why the middle of a box is no longer a dead spot that stacks when you
-meant to nest.
+Doing that used to be a fight, back when a drop was resolved into a tree. A
+box nested into a row halves its width, that moves the geometry out from under
+the cursor, the cursor is then over something else, and that nests it
+somewhere else again. Damping held it down -- a settle distance, a reversal
+distance, a test for whether a box was already where it was about to be put --
+and all of it was treating a symptom. What cured it was giving a box
+coordinates of its own: a drag moves the box and nothing else moves under it,
+so there is no loop left to damp.
 
 Canvases magnify from their literal size up to ten times it, stepped from the
 toolbar or with the wheel held under control. Magnification is a property of
@@ -269,13 +277,13 @@ rather than a transform, so it occupies the space it is drawn at instead of
 overrunning its card, and every hit test keeps comparing a cursor against a
 rectangle in the same screen coordinates. What that leaves is the handful of
 places where a distance on screen becomes a size in the model: the rectangle a
-box is drawn at, the distance an edge is dragged, the extents a splitter
-captures when it takes hold, and the offsets the guides, the drop marker and
-the rubber band are positioned by. Each divides by the magnification. The
-thresholds do not, and should not: a grab margin is eight pixels of screen
-whatever the canvas is magnified to, which is what makes a box a single pixel
-tall reachable at all -- at ten times it is ten pixels of screen, and ten
-pixels of drag move it by exactly one.
+box is drawn at, the distance an edge is dragged, the extents a resize
+captures when it takes hold, and the offsets the guides and the rubber band
+are positioned by. Each divides by the magnification. The thresholds do not,
+and should not: a grab margin is eight pixels of screen whatever the canvas is
+magnified to, which is what makes a box a single pixel tall reachable at all
+-- at ten times it is ten pixels of screen, and ten pixels of drag move it by
+exactly one.
 
 Ten times is where the range stops because that is far enough to work a single
 pixel comfortably, not because anything gives way there. The name is asked for
@@ -305,26 +313,14 @@ an oversized draw a fill squeezed the new box back to the space already
 there -- leaving the size in the properties panel disagreeing with the
 picture.
 
-A box dropped across its neighbour's axis attaches beside the container rather
-than beside the neighbour alone, whenever the neighbour spans that container.
-Every child of a column spans its width, so the right edge of a box and the
-right edge of the column are the same edge, and pairing with the box alone
-would leave the column's other children stranded beside a container sized to
-its largest member. Whether a box spans is measured against its siblings and
-ignores the box being moved, since the container's own size still counts the
-box that is about to leave it. A box smaller than its siblings still pairs
-with its neighbour, which is how a label and its field end up side by side.
-
 A gap is empty space nothing accounts for, and a layout is not allowed one.
-They can only open across a container's cross axis, because `normalize` sizes
-a container by summing its children along the main axis and taking the largest
-of them across it: siblings always tile the length of a row, but a child
-shorter than the tallest one leaves the difference empty beside it. Caro
-neither prevents this nor fills it in. Filling it in would invent a box the
-designer did not draw, and preventing it would move a box they did, so a gap
-stands until the validation view reports it -- the check being that every
-child spans its container's cross axis, and the report naming the box and how
-much room it leaves over.
+Boxes carry their own coordinates, so nothing stops one opening: any two that
+do not meet leave the space between them to nobody. The same freedom lets two
+boxes come to rest overlapping, since a box covered short of its middle holds
+its ground. Caro neither prevents either nor tidies them away. Tidying would
+invent a box the designer did not draw or move one they did, so both stand
+until the validation view reports them, naming the boxes and how much room is
+in dispute.
 
-Still missing: only leaves are drop targets, and there is no undo beyond
+Still missing: the validation view itself, and there is no undo beyond
 cancelling a gesture in progress.
