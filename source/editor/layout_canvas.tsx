@@ -314,41 +314,31 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         style={{...LayoutCanvas.STYLE.guide, ...style}}/>);
   }
 
+  /** Measures what the edge being resized lines up with. A drag has nothing
+      to measure: the box is already sitting where it would land, so its
+      edges meet its neighbours' whatever the cursor does, and a guide that
+      cannot fail to appear says nothing. */
   private measureGuides(): {guides: Guide[], aligned: Node[]} {
-    const gesture = this.state.gesture;
-    if(gesture !== Gesture.DRAG && gesture !== Gesture.RESIZE) {
-      return LayoutCanvas.NOTHING;
-    }
-    if(gesture === Gesture.DRAG && !this.isActive()) {
+    if(this.state.gesture !== Gesture.RESIZE) {
       return LayoutCanvas.NOTHING;
     }
     const moving = [] as Node[];
     const verticals = [] as number[];
     const horizontals = [] as number[];
-    if(gesture === Gesture.DRAG) {
-      const region = this.regionOf(this.state.carried);
-      if(region === null) {
+    const edge = this.state.edge;
+    for(const grip of edge.horizontal) {
+      const rect = this.boundaryOf(grip, moving);
+      if(rect === null) {
         return LayoutCanvas.NOTHING;
       }
-      moving.push(...leaves(this.state.carried));
-      verticals.push(region.left, region.right);
-      horizontals.push(region.top, region.bottom);
-    } else {
-      const edge = this.state.edge;
-      for(const grip of edge.horizontal) {
-        const rect = this.boundaryOf(grip, moving);
-        if(rect === null) {
-          return LayoutCanvas.NOTHING;
-        }
-        verticals.push(rect.right);
+      verticals.push(rect.right);
+    }
+    for(const grip of edge.vertical) {
+      const rect = this.boundaryOf(grip, moving);
+      if(rect === null) {
+        return LayoutCanvas.NOTHING;
       }
-      for(const grip of edge.vertical) {
-        const rect = this.boundaryOf(grip, moving);
-        if(rect === null) {
-          return LayoutCanvas.NOTHING;
-        }
-        horizontals.push(rect.bottom);
-      }
+      horizontals.push(rect.bottom);
     }
     const guides = [] as Guide[];
     const aligned = [] as Node[];
