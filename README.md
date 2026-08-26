@@ -27,8 +27,9 @@ the Web Portal, so `dali` drops in unchanged.
 **Draw, then snap.** A drawn rectangle is resolved into a tree edit at the
 moment of the gesture, while the enclosing cell, the drag origin and the
 nearby edges are all still known. The document is always a valid tree; there
-is no state holding an unreconciled rectangle. Gaps between siblings become
-spacer nodes automatically.
+is no state holding an unreconciled rectangle. Empty space is drawn as a box
+like anything else, one left unnamed; caro never conjures a box to fill a gap
+it finds, because a gap is a mistake to be reported rather than papered over.
 
 **A hierarchical file format.** Layouts are trees of rows and columns rather
 than absolute coordinates, matching what `dali`, flexbox and Qt box layouts
@@ -128,8 +129,8 @@ same space. Each is drawn on a canvas of its own below the layout it covers,
 captioned and deleted on its own, which is how the XD boards stack them and
 the only arrangement that leaves both of them somewhere to be drawn into. 20
 of the 709 layouts in the existing specifications carry one, 26 layers in all,
-and they are nearly always the same shape: a spacer taking the room and a
-named component pinned to the edge it leaves over, which is how a
+and they are nearly always the same shape: an unnamed box taking the room and
+a named component pinned to the edge it leaves over, which is how a
 specification says an action sheet or a save bar floats above a page. A layer
 is a tree of its own, so a box drawn into one is drawn into that one alone and
 deleting it leaves the layout beneath untouched.
@@ -276,6 +277,16 @@ ignores the box being moved, since the container's own size still counts the
 box that is about to leave it. A box smaller than its siblings still pairs
 with its neighbour, which is how a label and its field end up side by side.
 
-Still missing: spacers are never generated for the gaps between boxes, only
-leaves are drop targets, and there is no undo beyond cancelling a gesture in
-progress.
+A gap is empty space nothing accounts for, and a layout is not allowed one.
+They can only open across a container's cross axis, because `normalize` sizes
+a container by summing its children along the main axis and taking the largest
+of them across it: siblings always tile the length of a row, but a child
+shorter than the tallest one leaves the difference empty beside it. Caro
+neither prevents this nor fills it in. Filling it in would invent a box the
+designer did not draw, and preventing it would move a box they did, so a gap
+stands until the validation view reports it -- the check being that every
+child spans its container's cross axis, and the report naming the box and how
+much room it leaves over.
+
+Still missing: only leaves are drop targets, and there is no undo beyond
+cancelling a gesture in progress.
