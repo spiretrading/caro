@@ -1,5 +1,4 @@
-// Boxes sit where they are put, keep any gaps between them, and shove each
-// other out of the way rather than overlapping.
+// Boxes sit where they are put and keep any gaps between them.
 const path = require('path');
 
 // The converted specifications, which live beside the repository. Suites
@@ -71,20 +70,17 @@ async function main(){
     drawn.map(b => b.name + '@' + b.x + ',' + b.y),
     ['<A>@20,10', '<B>@250,120']);
 
-  // carry A onto B: B must give way rather than be covered
+  // carry A onto B: nothing gets out of its way
   await drag(at(120, 35), at(300, 150));
   drawn = await boxes();
-  console.log('   after the shove: ' + drawn.map(b =>
+  console.log('   after the drop: ' + drawn.map(b =>
     b.name + ' ' + b.width + 'x' + b.height + '@' + b.x + ',' + b.y).join('  '));
   const a = drawn.find(b => b.name === '<A>');
   const b = drawn.find(b => b.name === '<B>');
   check('the carried box went where it was dropped',
     [a.x, a.y], [200, 125]);
-  check('the box it landed on gave way', b.y > 120, true);
-  const down = Math.min(a.y + a.height, b.y + b.height) -
-    Math.max(a.y, b.y);
-  check('and what overlap is left is short of its halfway point',
-    down < b.height / 2, true);
+  check('and the box it landed on stayed where it was',
+    [b.x, b.y], [250, 120]);
   // a converted specification opens and draws where it was drawn
   const TEXT = fs.readFileSync(
     path.join(SPECS, 'profit_and_loss_page/layout.json'),

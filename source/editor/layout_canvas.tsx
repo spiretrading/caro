@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Box, SizePolicy } from '../layout';
-import { boxAt, extentOf, push } from './arrange';
+import { boxAt, extentOf } from './arrange';
 import { POLICY_COLOR, POLICY_EDGE, POLICY_INK } from './palette';
 
 /** The distance a press must cover before it draws or drags, in pixels of
@@ -146,7 +146,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       aligned: []
     };
     this.held = [];
-    this.settled = [];
     this.active = false;
     this.identifiers = new WeakMap<Box, string>();
     this.count = 0;
@@ -202,7 +201,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private shown: Reveal = null;
   private pointer: {clientX: number, clientY: number};
   private held: Held[];
-  private settled: Held[];
   private active: boolean;
   private identifiers: WeakMap<Box, string>;
   private count: number;
@@ -521,22 +519,15 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       current: point});
   }
 
-  /** Remembers where a set of boxes sat when a gesture began, and where
-      every other box sat with them. */
+  /** Remembers where a set of boxes sat when a gesture began. */
   private hold(boxes: Box[]): void {
     this.held = boxes.map(box => ({box, x: box.x, y: box.y,
       width: box.width, height: box.height}));
-    this.settled = this.props.boxes.map(box => ({box, x: box.x, y: box.y,
-      width: box.width, height: box.height}));
   }
 
-  /** Puts every box back where it stood when the gesture began. A drag shows
-      what the layout would be if it ended here, so what gives way has to be
-      decided by where the box is now and not by the path the cursor took to
-      get there: without this a box shoved aside on the way past stays shoved
-      even after the box that shoved it has moved on. */
+  /** Puts the held boxes back where they stood when the gesture began. */
   private restore(): void {
-    for(const held of this.settled) {
+    for(const held of this.held) {
       held.box.x = held.x;
       held.box.y = held.y;
       held.box.width = held.width;
@@ -562,7 +553,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   /** Moves the held boxes by however far the cursor has travelled. */
   private move(point: Point): void {
-    this.restore();
     const across = point.x - this.state.origin.x;
     const down = point.y - this.state.origin.y;
     const shift = {
@@ -573,7 +563,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       held.box.x = Math.round(held.x + shift.x);
       held.box.y = Math.round(held.y + shift.y);
     }
-    push(this.props.boxes, this.held.map(held => held.box));
     this.props.onChange?.();
   }
 
@@ -605,7 +594,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         held.box.height = height;
       }
     }
-    push(this.props.boxes, this.held.map(held => held.box));
     this.props.onChange?.();
   }
 
@@ -636,7 +624,6 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     }
     const box = this.build(region);
     this.props.boxes.push(box);
-    push(this.props.boxes, [box]);
     this.props.onSelect?.([box], false, this.props.boxes);
     this.props.onChange?.();
   }

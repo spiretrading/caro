@@ -71,17 +71,16 @@ async function main(){
   console.log('   before: ' + before.join(' | '));
   check('three boxes to begin with', before.length, 3);
 
-  // Carry the top box down over the other two, so the layout reflows to
-  // show the drop, then back out without letting go.
+  // Carry the top box down over the other two, then back out without
+  // letting go.
   await drag(at(120, 55), at(120, 235));
   const during = await evaluate(LAY);
   console.log('   during: ' + during.join(' | '));
-  check('carrying it over the others moves them',
-    during.join() !== before.join(), true);
+  check('carrying it moves it', during.join() !== before.join(), true);
   await escape();
   const backed = await evaluate(LAY);
   console.log('   escaped:' + backed.join(' | '));
-  check('Escape puts every box back', backed, before);
+  check('Escape puts it back', backed, before);
   await move(at(120, 235).x, at(120, 235).y, 'mouseReleased');
   await pause(300);
   check('and letting go afterwards changes nothing',
