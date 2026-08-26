@@ -1,1 +1,1 @@
-export { LAYOUT_FILE, SpecificationDirectory } from './specification_directory';
+export { SpecificationFile } from './specification_file';

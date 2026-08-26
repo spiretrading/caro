@@ -41,13 +41,19 @@ export function importFlatBoard(value: any): Board {
         (layout.overlays ?? []).map(importFrame))))));
 }
 
-/** Converts a single flat frame of boxes into a layout tree. */
-export function importFrame(frame: any): Node {
+/** Converts a single flat frame of boxes into a layout tree, always rooted
+    at a container so that a layout of one box is still an arrangement. */
+export function importFrame(frame: any): Container {
   const boxes = frame.boxes ?? frame;
   if(boxes.length === 0) {
     throw new Error('A frame contains no boxes.');
   }
-  return build(boxes);
+  const root = build(boxes);
+  if(root instanceof Container) {
+    return root;
+  }
+  return new Container(Orientation.COLUMN, root.width, root.height,
+    root.widthPolicy, root.heightPolicy, [root]);
 }
 
 function build(boxes: FlatBox[]): Node {

@@ -48,10 +48,10 @@ and is only implemented by Chrome and Edge.
 
 ## Using
 
-Click **Open specifications** and choose a directory. Caro walks it for
-`layout.json` files. Files in the legacy flat box format emitted by
-`xd_parser` are converted on load, so existing specifications open directly;
-saving writes them back in the hierarchical format.
+Click **Open** and choose a specification. A file in the legacy flat box
+format emitted by `xd_parser` is converted on load, so an existing
+specification opens directly; **Save** writes it back in the hierarchical
+format, asking where to put a specification that has no file yet.
 
 ## Format
 

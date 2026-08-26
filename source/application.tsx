@@ -4,12 +4,10 @@ import { contains, detach, ensureBlank, makeBlank, NodeProperties,
 import { Board, Component, Container, Layout, Node, Orientation,
   SizePolicy } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
-import { SpecificationDirectory } from './storage';
+import { SpecificationFile } from './storage';
 
 interface State {
-  directory: SpecificationDirectory;
-  paths: string[];
-  path: string;
+  file: SpecificationFile;
   board: Board;
   component: Component;
   selection: Node;
@@ -17,16 +15,14 @@ interface State {
   status: string;
 }
 
-/** Edits the layout specifications found in a local directory. */
+/** Edits a layout specification held in a local file. */
 export class Application extends React.Component<{}, State> {
   constructor(props: {}) {
     super(props);
     const board = Application.createBoard();
     const component = board.components[0];
     this.state = {
-      directory: null,
-      paths: [],
-      path: '',
+      file: null,
       board,
       component,
       selection: null,
@@ -36,7 +32,7 @@ export class Application extends React.Component<{}, State> {
   }
 
   public render(): JSX.Element {
-    if(!SpecificationDirectory.isSupported()) {
+    if(!SpecificationFile.isSupported()) {
       return (
         <div style={Application.STYLE.message}>
           Caro needs a browser supporting the File System Access API.
@@ -95,15 +91,8 @@ export class Application extends React.Component<{}, State> {
         <button style={Application.STYLE.button} onClick={this.onSave}>
           Save
         </button>
-        {this.state.paths.length > 0 &&
-          <select style={Application.STYLE.select} value={this.state.path}
-              onChange={this.onPath}>
-            <option value=''>{this.directoryName()}</option>
-            {this.state.paths.map(path =>
-              <option key={path} value={path}>{path}</option>)}
-          </select>}
         {this.state.board !== null &&
-          <select style={Application.STYLE.select}
+          <select style={Application.STYLE.select} title='Section'
               value={this.componentIndex()} onChange={this.onComponent}>
             {this.state.board.components.map((component, index) =>
               <option key={index} value={index}>{component.name}</option>)}
@@ -127,13 +116,6 @@ export class Application extends React.Component<{}, State> {
       </div>);
   }
 
-  private directoryName(): string {
-    if(this.state.directory === null) {
-      return 'Specifications';
-    }
-    return this.state.directory.name;
-  }
-
   private renderBody(): JSX.Element {
     if(this.state.component !== null) {
       return (
@@ -146,7 +128,7 @@ export class Application extends React.Component<{}, State> {
     }
     return (
       <div style={Application.STYLE.placeholder}>
-        Open a directory of specifications, or start a new one.
+        Open a specification, or start a new one.
       </div>);
   }
 
@@ -158,7 +140,7 @@ export class Application extends React.Component<{}, State> {
     const board = Application.createBoard();
     const component = board.components[0];
     this.setState({
-      path: '',
+      file: null,
       board,
       component,
       selection: null,
@@ -174,29 +156,8 @@ export class Application extends React.Component<{}, State> {
 
   private onOpen = async () => {
     try {
-      const directory = await SpecificationDirectory.open();
-      const paths = await directory.list();
-      this.setState({
-        directory,
-        paths,
-        status: `${paths.length} specifications found.`
-      });
-    } catch(error) {
-      this.setState({status: `${error}`});
-    }
-  }
-
-  private onPath = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const path = event.target.value;
-    if(path === '') {
-      return;
-    }
-    await this.onSelectPath(path);
-  }
-
-  private onSelectPath = async (path: string) => {
-    try {
-      const text = await this.state.directory.read(path);
+      const file = await SpecificationFile.open();
+      const text = await file.read();
       const value = JSON.parse(text);
       const board = (() => {
         if(isFlatBoard(value)) {
@@ -206,15 +167,15 @@ export class Application extends React.Component<{}, State> {
       })();
       const status = (() => {
         if(isFlatBoard(value)) {
-          return `Imported ${path} from the legacy format.`;
+          return `Imported ${file.name} from the legacy format.`;
         }
-        return `Loaded ${path}.`;
+        return `Opened ${file.name}.`;
       })();
       const component = board.components[0] ?? null;
       if(component !== null) {
         ensureBlank(component);
       }
-      this.setState({path, board, component, selection: null, status});
+      this.setState({file, board, component, selection: null, status});
     } catch(error) {
       this.setState({status: `${error}`});
     }
@@ -329,26 +290,15 @@ export class Application extends React.Component<{}, State> {
   }
 
   private onSave = async () => {
-    if(this.state.directory === null) {
-      this.setState({
-        status: 'Open a directory before saving.'});
-      return;
-    }
-    const path = (() => {
-      if(this.state.path !== '') {
-        return this.state.path;
-      }
-      return window.prompt(
-        'Save as', `${this.state.board.name.toLowerCase()}/layout.json`);
-    })();
-    if(path === null || path === '') {
-      return;
-    }
     try {
-      await this.state.directory.write(path,
-        prune(this.state.board).toJson());
-      const paths = await this.state.directory.list();
-      this.setState({path, paths, status: `Saved ${path}.`});
+      const file = await (async () => {
+        if(this.state.file !== null) {
+          return this.state.file;
+        }
+        return await SpecificationFile.create('layout.json');
+      })();
+      await file.write(prune(this.state.board).toJson());
+      this.setState({file, status: `Saved ${file.name}.`});
     } catch(error) {
       this.setState({status: `${error}`});
     }
