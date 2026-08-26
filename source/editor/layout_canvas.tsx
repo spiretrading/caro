@@ -123,6 +123,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       aligned: []
     };
     this.held = [];
+    this.settled = [];
+    this.active = false;
     this.identifiers = new WeakMap<Box, string>();
     this.count = 0;
     this.extend = false;
@@ -153,6 +155,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   private container: HTMLDivElement;
   private held: Held[];
+  private settled: Held[];
+  private active: boolean;
   private identifiers: WeakMap<Box, string>;
   private count: number;
   private extend: boolean;
@@ -271,13 +275,21 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     };
   }
 
+  /** Returns whether a press has become a gesture. Once it has, it stays
+      one: a cursor brought back to where it started has still travelled, and
+      a drag that stopped counting there would leave the box behind wherever
+      it last looked far enough away. */
   private isActive(): boolean {
     if(this.state.gesture === Gesture.NONE) {
       return false;
     }
+    if(this.active) {
+      return true;
+    }
     const region = this.measure();
     const threshold = this.local(DRAG_THRESHOLD);
-    return region.width >= threshold || region.height >= threshold;
+    this.active = region.width >= threshold || region.height >= threshold;
+    return this.active;
   }
 
   /** Returns the edges of the selection a point has hold of, or null when it
@@ -333,6 +345,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   private onMouseDown = (event: React.MouseEvent) => {
     const point = this.pointOf(event);
     this.extend = event.shiftKey;
+    this.active = false;
     this.origin = point;
     event.preventDefault();
     this.attach();
@@ -350,7 +363,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     }
     const picked = boxAt(this.props.boxes, point.x, point.y);
     if(picked === null) {
-      this.held = [];
+      this.hold([]);
       this.setState({gesture: Gesture.DRAW, handle: null, origin: point,
         current: point});
       return;
@@ -366,10 +379,27 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       current: point});
   }
 
-  /** Remembers where a set of boxes sat when a gesture began. */
+  /** Remembers where a set of boxes sat when a gesture began, and where
+      every other box sat with them. */
   private hold(boxes: Box[]): void {
     this.held = boxes.map(box => ({box, x: box.x, y: box.y,
       width: box.width, height: box.height}));
+    this.settled = this.props.boxes.map(box => ({box, x: box.x, y: box.y,
+      width: box.width, height: box.height}));
+  }
+
+  /** Puts every box back where it stood when the gesture began. A drag shows
+      what the layout would be if it ended here, so what gives way has to be
+      decided by where the box is now and not by the path the cursor took to
+      get there: without this a box shoved aside on the way past stays shoved
+      even after the box that shoved it has moved on. */
+  private restore(): void {
+    for(const held of this.settled) {
+      held.box.x = held.x;
+      held.box.y = held.y;
+      held.box.width = held.width;
+      held.box.height = held.height;
+    }
   }
 
   private onMouseMove = (event: MouseEvent) => {
@@ -389,6 +419,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   /** Moves the held boxes by however far the cursor has travelled. */
   private move(point: Point): void {
+    this.restore();
     const across = point.x - this.state.origin.x;
     const down = point.y - this.state.origin.y;
     const shift = {
@@ -405,6 +436,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
 
   /** Resizes the held boxes, moving only the edges the press has hold of. */
   private resize(point: Point): void {
+    this.restore();
     const handle = this.state.handle;
     const across = point.x - this.state.origin.x;
     const down = point.y - this.state.origin.y;
@@ -545,12 +577,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return;
     }
     this.detachListeners();
-    for(const held of this.held) {
-      held.box.x = held.x;
-      held.box.y = held.y;
-      held.box.width = held.width;
-      held.box.height = held.height;
-    }
+    this.restore();
     this.setState({gesture: Gesture.NONE, handle: null, guides: [],
       aligned: []});
     this.props.onChange?.();
