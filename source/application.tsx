@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { contains, detach, ensureBlank, makeBlank, NodeProperties,
-  normalize, prune, ScenarioBoard } from './editor';
+  normalize, prune, ScenarioBoard, SectionPicker } from './editor';
 import { Board, Component, Container, Layout, Node, Orientation,
   SizePolicy } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
@@ -91,16 +91,10 @@ export class Application extends React.Component<{}, State> {
         <button style={Application.STYLE.button} onClick={this.onSave}>
           Save
         </button>
-        {this.state.board !== null &&
-          <select style={Application.STYLE.select} title='Section'
-              value={this.componentIndex()} onChange={this.onComponent}>
-            {this.state.board.components.map((component, index) =>
-              <option key={index} value={index}>{component.name}</option>)}
-          </select>}
         {this.state.component !== null &&
-          <input style={Application.STYLE.name}
-            value={this.state.component.name} placeholder='Section:Name'
-            onChange={this.onRename}/>}
+          <SectionPicker sections={this.state.board.components}
+            selected={this.state.component} onSelect={this.onSelectSection}
+            onRename={this.onRename}/>}
         {this.state.board !== null &&
           <button style={Application.STYLE.control} title='Add a section'
               onClick={this.onAddSection}>
@@ -181,9 +175,7 @@ export class Application extends React.Component<{}, State> {
     }
   }
 
-  private onComponent = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const index = Number(event.target.value);
-    const component = this.state.board.components[index];
+  private onSelectSection = (component: Component) => {
     ensureBlank(component);
     this.setState({component, selection: null});
   }
@@ -244,8 +236,8 @@ export class Application extends React.Component<{}, State> {
     });
   }
 
-  private onRename = (event: React.ChangeEvent<HTMLInputElement>) => {
-    this.state.component.name = event.target.value;
+  private onRename = (name: string) => {
+    this.state.component.name = name;
     this.setState({revision: this.state.revision + 1});
   }
 
@@ -334,18 +326,6 @@ export class Application extends React.Component<{}, State> {
       padding: '12px 20px',
       borderBottom: '1px solid #C8C8C8',
       backgroundColor: '#FFFFFF'
-    },
-    select: {
-      padding: '6px',
-      fontSize: '13px',
-      maxWidth: '260px'
-    },
-    name: {
-      width: '160px',
-      padding: '6px',
-      fontSize: '13px',
-      fontFamily: 'inherit',
-      border: '1px solid #C8C8C8'
     },
     control: {
       width: '28px',
