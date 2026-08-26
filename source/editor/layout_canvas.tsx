@@ -242,7 +242,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return {cursor: LayoutCanvas.cursorFor(edge)};
     })();
     return (
-      <div key={this.keyOf(node)}
+      <div key={this.keyOf(node)} data-keeps-selection=''
           ref={element => this.register(node, element)}
           style={{...LayoutCanvas.STYLE.box,
             ...LayoutCanvas.toFlex(node, orientation),

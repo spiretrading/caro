@@ -18,7 +18,7 @@ export class NodeProperties extends React.Component<Properties> {
   public render(): JSX.Element {
     if(this.props.node === null) {
       return (
-        <div style={NodeProperties.STYLE.panel}>
+        <div style={NodeProperties.STYLE.panel} data-keeps-selection=''>
           <div style={NodeProperties.STYLE.empty}>
             Select a box to edit it.
           </div>
@@ -26,7 +26,7 @@ export class NodeProperties extends React.Component<Properties> {
     }
     const node = this.props.node;
     return (
-      <div style={NodeProperties.STYLE.panel}>
+      <div style={NodeProperties.STYLE.panel} data-keeps-selection=''>
         <div style={NodeProperties.STYLE.heading}>Box</div>
         {node instanceof Reference &&
           <label style={NodeProperties.STYLE.field}>

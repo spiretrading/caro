@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { contains, detach, ensureBlank, makeBlank, NodeProperties,
-  normalize, prune, ScenarioBoard, SectionPicker } from './editor';
+import { contains, detach, ensureBlank, keepsSelection, makeBlank,
+  NodeProperties, normalize, prune, ScenarioBoard,
+  SectionPicker } from './editor';
 import { Board, Component, Container, Layout, Node, Orientation,
   SizePolicy } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
@@ -53,17 +54,43 @@ export class Application extends React.Component<{}, State> {
 
   public componentDidMount(): void {
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('mousedown', this.onMouseDown);
   }
 
   public componentWillUnmount(): void {
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('mousedown', this.onMouseDown);
+  }
+
+  private onMouseDown = (event: MouseEvent) => {
+    Application.release(event.target);
+    if(this.state.selection === null || keepsSelection(event.target)) {
+      return;
+    }
+    this.setState({selection: null});
+  }
+
+  private static release(target: EventTarget): void {
+    const active = document.activeElement;
+    if(!Application.isTyping() || !(active instanceof HTMLElement)) {
+      return;
+    }
+    if(target instanceof Element &&
+        (active === target || active.contains(target))) {
+      return;
+    }
+    active.blur();
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
-    if(event.key !== 'Delete' && event.key !== 'Backspace') {
+    if(this.state.selection === null || Application.isTyping()) {
       return;
     }
-    if(this.state.selection === null || Application.isTyping()) {
+    if(event.key === 'Escape') {
+      this.setState({selection: null});
+      return;
+    }
+    if(event.key !== 'Delete' && event.key !== 'Backspace') {
       return;
     }
     event.preventDefault();

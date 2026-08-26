@@ -168,9 +168,15 @@ border; measuring from the bounding rectangle draws every overlay a border
 width off. Escape cancels
 a gesture. Delete or Backspace removes the selected box, as
 does the control on the box itself and the button in the properties panel. A
-box carries its name centred as `<Name>` and shows nothing when unnamed; the
-properties panel names the selection and sets each of its axes to fixed,
-fill or fit, each choice carrying the colour it paints the box.
+press anywhere clears the selection, except on a box or inside the properties
+panel, which keeps it because its Delete button acts on it; Escape clears it
+too once no gesture is running. A press outside the field holding focus drops
+that focus, so a box picked after typing in a condition or a properties block
+still answers the keyboard, which it otherwise would not: the canvas
+suppresses the default on its presses, and that leaves focus sitting in the
+field. A box carries its name centred as `<Name>` and shows nothing when
+unnamed; the properties panel names the selection and sets each of its axes to
+fixed, fill or fit, each choice carrying the colour it paints the box.
 
 Dropping a box against the top or bottom of another places it as a sibling;
 dropping against the left or right nests both into a row, and the reverse
