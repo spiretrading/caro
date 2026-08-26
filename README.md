@@ -201,12 +201,12 @@ A drawn box resolves against the centre of the rectangle drawn, not against
 the cursor, which would otherwise land in a neighbour's edge zone and nest the
 box instead of stacking it.
 
-Canvases magnify from their literal size up to four times it, stepped from the
+Canvases magnify from their literal size up to ten times it, stepped from the
 toolbar or with the wheel held under control. Magnification is a property of
 the board rather than of one scenario, since scenarios sit side by side to be
-compared and only one of them fits on screen at four times anyway. The canvas
+compared and only one of them fits on screen magnified anyway. The canvas
 alone magnifies; the condition and properties fields beside it are controls
-rather than drawing, and a text field at four times helps nobody.
+rather than drawing, and a text field at ten times helps nobody.
 
 The picture scales; the model does not. A canvas is magnified with CSS `zoom`
 rather than a transform, so it occupies the space it is drawn at instead of
@@ -218,8 +218,13 @@ captures when it takes hold, and the offsets the guides, the drop marker and
 the rubber band are positioned by. Each divides by the magnification. The
 thresholds do not, and should not: a grab margin is eight pixels of screen
 whatever the canvas is magnified to, which is what makes a box a single pixel
-tall reachable at all -- at four times it is four pixels of screen, and four
-pixels of drag move it by one.
+tall reachable at all -- at ten times it is ten pixels of screen, and ten
+pixels of drag move it by exactly one.
+
+Ten times is where the range stops because that is far enough to work a single
+pixel comfortably, not because anything gives way there. The name is asked for
+a font of 1.2 pixels and is given one, coming back about three percent narrow
+from the rounding; everything else measures the same as it does at one.
 
 Names, the prompt on an empty canvas and the control that deletes a box are
 drawn at a fixed size on screen instead of being magnified with the drawing.

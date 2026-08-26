@@ -8,7 +8,7 @@ import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
 
 /** The magnifications a canvas steps through, in ascending order. */
-const ZOOM_STEPS = [1, 1.5, 2, 3, 4];
+const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6, 8, 10];
 
 interface State {
   file: SpecificationFile;
