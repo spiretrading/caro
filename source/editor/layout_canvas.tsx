@@ -79,6 +79,12 @@ interface Handle {
   bottom: boolean;
 }
 
+/** The boxes a press takes hold of, and the edges of them it has. */
+interface Grasp {
+  handle: Handle;
+  boxes: Box[];
+}
+
 interface Properties {
 
   /** The boxes being drawn. */
@@ -128,6 +134,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     this.identifiers = new WeakMap<Box, string>();
     this.count = 0;
     this.extend = false;
+    this.pointer = null;
   }
 
   public render(): JSX.Element {
@@ -151,11 +158,24 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       </div>);
   }
 
+  public componentDidUpdate(): void {
+    if(this.state.gesture !== Gesture.NONE || this.pointer === null ||
+        this.container === null) {
+      return;
+    }
+    const handle = this.handleAt(this.pointOf(this.pointer));
+    if(LayoutCanvas.sameHandle(handle, this.state.handle)) {
+      return;
+    }
+    this.setState({handle});
+  }
+
   public componentWillUnmount(): void {
     this.detachListeners();
   }
 
   private container: HTMLDivElement;
+  private pointer: {clientX: number, clientY: number};
   private held: Held[];
   private settled: Held[];
   private active: boolean;
@@ -192,7 +212,8 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           style={{...LayoutCanvas.STYLE.box,
             left: `${box.x}px`, top: `${box.y}px`,
             width: `${box.width}px`, height: `${box.height}px`,
-            ...LayoutCanvas.paintFor(box), ...selection, ...alignment}}>
+            ...LayoutCanvas.paintFor(box), ...selection, ...alignment,
+            ...LayoutCanvas.cursorFor(this.state.handle)}}>
         {label !== '' &&
           <span style={{...LayoutCanvas.STYLE.label,
             ...LayoutCanvas.inkFor(box),
@@ -257,11 +278,11 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   /** Converts a place on screen into a place in the layout. */
-  private pointOf(event: MouseEvent | React.MouseEvent): Point {
+  private pointOf(place: {clientX: number, clientY: number}): Point {
     const bounds = this.container.getBoundingClientRect();
     return {
-      x: this.local(event.clientX - bounds.left - this.container.clientLeft),
-      y: this.local(event.clientY - bounds.top - this.container.clientTop)
+      x: this.local(place.clientX - bounds.left) - this.container.clientLeft,
+      y: this.local(place.clientY - bounds.top) - this.container.clientTop
     };
   }
 
@@ -294,19 +315,26 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return this.active;
   }
 
-  /** Returns the edges of the selection a point has hold of, or null when it
-      has hold of none of them. */
-  private handleAt(point: Point): Handle {
-    const chosen = this.chosen();
-    if(chosen.length === 0) {
+  /** Returns the edges of a set of boxes a point has hold of, or null when
+      it has hold of none of them, taking a point outside them only when
+      asked to reach beyond their edges. */
+  private handleFor(boxes: Box[], point: Point, beyond: boolean): Handle {
+    if(boxes.length === 0) {
       return null;
     }
-    const region = extentOf(chosen);
+    const region = extentOf(boxes);
     const across = Math.min(this.local(RESIZE_MARGIN), region.width / 3);
     const down = Math.min(this.local(RESIZE_MARGIN), region.height / 3);
-    if(point.x < region.x - across || point.x > region.x + region.width +
-        across || point.y < region.y - down ||
-        point.y > region.y + region.height + down) {
+    const reach = (() => {
+      if(beyond) {
+        return {across, down};
+      }
+      return {across: 0, down: 0};
+    })();
+    if(point.x < region.x - reach.across ||
+        point.x > region.x + region.width + reach.across ||
+        point.y < region.y - reach.down ||
+        point.y > region.y + region.height + reach.down) {
       return null;
     }
     const handle = {
@@ -321,6 +349,51 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     return handle;
   }
 
+  /** Returns what a point takes hold of: the selection when the point is at
+      its edges, otherwise the topmost box whose edges it is at, or null when
+      it takes hold of nothing. Boxes the point lies within are asked first,
+      so that the edge between two touching boxes belongs to the one the
+      point is actually over, and a box only reaches past its edges over the
+      empty canvas beside it. */
+  private grasp(point: Point): Grasp {
+    const chosen = this.chosen();
+    const held = this.handleFor(chosen, point, true);
+    if(held !== null) {
+      return {handle: held, boxes: chosen};
+    }
+    const within = this.nearest(point, false);
+    if(within !== null) {
+      return within;
+    }
+    if(boxAt(this.props.boxes, point.x, point.y) !== null) {
+      return null;
+    }
+    return this.nearest(point, true);
+  }
+
+  /** Returns the topmost box a point has an edge of, or null when it has
+      none of them. */
+  private nearest(point: Point, beyond: boolean): Grasp {
+    for(let index = this.props.boxes.length - 1; index >= 0; index -= 1) {
+      const box = this.props.boxes[index];
+      const handle = this.handleFor([box], point, beyond);
+      if(handle !== null) {
+        return {handle, boxes: [box]};
+      }
+    }
+    return null;
+  }
+
+  /** Returns the edges a point has hold of, or null when it has hold of none
+      of them. */
+  private handleAt(point: Point): Handle {
+    const grasp = this.grasp(point);
+    if(grasp === null) {
+      return null;
+    }
+    return grasp.handle;
+  }
+
   /** Returns the selected boxes that are on this canvas. */
   private chosen(): Box[] {
     return this.props.boxes.filter(
@@ -328,6 +401,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private onHover = (event: React.MouseEvent) => {
+    this.pointer = {clientX: event.clientX, clientY: event.clientY};
     if(this.state.gesture !== Gesture.NONE) {
       return;
     }
@@ -339,6 +413,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private onLeave = () => {
+    this.pointer = null;
     if(this.state.gesture === Gesture.NONE && this.state.handle !== null) {
       this.setState({handle: null});
     }
@@ -351,16 +426,20 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     this.origin = point;
     event.preventDefault();
     this.attach();
-    const handle = (() => {
+    const grasp = (() => {
       if(this.extend) {
         return null;
       }
-      return this.handleAt(point);
+      return this.grasp(point);
     })();
-    if(handle !== null) {
-      this.hold(this.chosen());
-      this.setState({gesture: Gesture.RESIZE, handle, origin: point,
-        current: point});
+    if(grasp !== null) {
+      this.hold(grasp.boxes);
+      if(grasp.boxes.length === 1 &&
+          this.props.selection.indexOf(grasp.boxes[0]) === -1) {
+        this.props.onSelect?.(grasp.boxes, false);
+      }
+      this.setState({gesture: Gesture.RESIZE, handle: grasp.handle,
+        origin: point, current: point});
       return;
     }
     const picked = boxAt(this.props.boxes, point.x, point.y);
@@ -370,13 +449,17 @@ export class LayoutCanvas extends React.Component<Properties, State> {
         current: point});
       return;
     }
+    const taken = this.props.selection.indexOf(picked) !== -1;
     const moving = (() => {
-      if(this.extend || this.props.selection.indexOf(picked) === -1) {
+      if(this.extend || !taken) {
         return [picked];
       }
       return this.chosen();
     })();
     this.hold(moving);
+    if(!this.extend && !taken) {
+      this.props.onSelect?.([picked], false);
+    }
     this.setState({gesture: Gesture.DRAG, handle: null, origin: point,
       current: point});
   }
@@ -405,6 +488,7 @@ export class LayoutCanvas extends React.Component<Properties, State> {
   }
 
   private onMouseMove = (event: MouseEvent) => {
+    this.pointer = {clientX: event.clientX, clientY: event.clientY};
     const point = this.pointOf(event);
     this.setState({current: point}, () => {
       if(!this.isActive()) {
