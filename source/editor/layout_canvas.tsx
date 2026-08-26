@@ -1006,20 +1006,24 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       root: Container): Node {
     const widthPolicy = (() => {
       if(root.orientation === Orientation.COLUMN &&
-          region.width >= this.bounds.width * FILL_RATIO) {
+          LayoutCanvas.fills(region.width, this.bounds.width)) {
         return SizePolicy.FILL;
       }
       return SizePolicy.FIXED;
     })();
     const heightPolicy = (() => {
       if(root.orientation === Orientation.ROW &&
-          region.height >= this.bounds.height * FILL_RATIO) {
+          LayoutCanvas.fills(region.height, this.bounds.height)) {
         return SizePolicy.FILL;
       }
       return SizePolicy.FIXED;
     })();
     return new Reference('', Math.round(region.width),
       Math.round(region.height), widthPolicy, heightPolicy);
+  }
+
+  private static fills(extent: number, available: number): boolean {
+    return extent >= available * FILL_RATIO && extent <= available;
   }
 
   private static zoneOf(extent: number): number {

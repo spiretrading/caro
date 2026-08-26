@@ -201,6 +201,14 @@ A drawn box resolves against the centre of the rectangle drawn, not against
 the cursor, which would otherwise land in a neighbour's edge zone and nest the
 box instead of stacking it.
 
+A box drawn across most of the canvas is taken to fill it, but only up to the
+canvas itself: drawn past the edge it is fixed at the size it was drawn, and
+the section grows to hold it. Filling more than the space available is not a
+thing a box can be asked to do, and a fill renders free to shrink, so calling
+an oversized draw a fill squeezed the new box back to the space already
+there -- leaving the size in the properties panel disagreeing with the
+picture.
+
 A box dropped across its neighbour's axis attaches beside the container rather
 than beside the neighbour alone, whenever the neighbour spans that container.
 Every child of a column spans its width, so the right edge of a box and the
