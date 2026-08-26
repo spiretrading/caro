@@ -208,7 +208,10 @@ arranged the way they were drawn, and dropped the way a single box is dropped.
 The rebuilding is the same cut into rows and columns that reads the legacy
 format, which is why it needs no rules of its own. A group landing somewhere
 that runs the same way as itself is spliced in rather than nested, so dragging
-the same boxes twice does not bury them a level deeper each time.
+the same boxes twice does not bury them a level deeper each time. What follows
+the cursor is the group as it stands, each of its boxes drawn at its own size,
+rather than one rectangle the size of all of them: the point of picking up
+several boxes is that you can still tell which ones you have.
 
 Resizing several of them treats them as one box. The selection's bounds are
 the union of what is in it, and dragging an edge of that rectangle moves only

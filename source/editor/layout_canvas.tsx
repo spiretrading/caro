@@ -480,17 +480,62 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return null;
     }
     const node = this.state.carried;
+    const place = {
+      left: `${this.state.current.x - this.state.grab.x}px`,
+      top: `${this.state.current.y - this.state.grab.y}px`
+    };
+    if(node instanceof Container) {
+      return (
+        <div style={{...LayoutCanvas.STYLE.carried, ...place,
+            alignItems: 'flex-start', justifyContent: 'flex-start',
+            width: `${Math.min(this.state.size.width,
+              CARRIED_LIMIT.width)}px`,
+            height: `${Math.min(this.state.size.height,
+              CARRIED_LIMIT.height)}px`}}>
+          <div style={{zoom: this.props.zoom, display: 'flex',
+              flexDirection: LayoutCanvas.toDirection(node.orientation),
+              width: `${node.width}px`, height: `${node.height}px`}}>
+            {node.children.map(child =>
+              this.renderGhost(child, node.orientation))}
+          </div>
+        </div>);
+    }
     const label = LayoutCanvas.labelOf(node);
     return (
-      <div style={{...LayoutCanvas.STYLE.carried,
-        left: `${this.state.current.x - this.state.grab.x}px`,
-        top: `${this.state.current.y - this.state.grab.y}px`,
+      <div style={{...LayoutCanvas.STYLE.carried, ...place,
         width: `${Math.min(this.state.size.width, CARRIED_LIMIT.width)}px`,
         height: `${Math.min(this.state.size.height, CARRIED_LIMIT.height)}px`,
         ...LayoutCanvas.paintFor(node)}}>
         {label !== '' &&
           <span style={{...LayoutCanvas.STYLE.label,
             ...LayoutCanvas.inkFor(node)}}>{label}</span>}
+      </div>);
+  }
+
+  /** Draws a tree the way the canvas does, but as a picture: nothing is
+      registered, so the boxes being carried keep the geometry they have
+      where they actually sit. */
+  private renderGhost(node: Node, orientation: Orientation): JSX.Element {
+    if(node instanceof Container) {
+      return (
+        <div key={this.keyOf(node)}
+            style={{...LayoutCanvas.STYLE.group,
+              ...LayoutCanvas.toFlex(node, orientation),
+              flexDirection: LayoutCanvas.toDirection(node.orientation)}}>
+          {node.children.map(child =>
+            this.renderGhost(child, node.orientation))}
+        </div>);
+    }
+    const label = LayoutCanvas.labelOf(node);
+    return (
+      <div key={this.keyOf(node)}
+          style={{...LayoutCanvas.STYLE.box,
+            ...LayoutCanvas.toFlex(node, orientation),
+            ...LayoutCanvas.paintFor(node)}}>
+        {label !== '' &&
+          <span style={{...LayoutCanvas.STYLE.label,
+            ...LayoutCanvas.inkFor(node),
+            fontSize: `${this.local(LABEL_SIZE)}px`}}>{label}</span>}
       </div>);
   }
 
