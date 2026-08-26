@@ -3,7 +3,7 @@ import { Board, Component, Container, Layout, Orientation,
 
 /** Returns whether a scenario has been left untouched. */
 export function isBlank(layout: Layout): boolean {
-  if(layout.condition !== '') {
+  if(layout.condition !== '' || (layout.properties ?? '') !== '') {
     return false;
   }
   if(!(layout.root instanceof Container)) {

@@ -118,7 +118,8 @@ export class Application extends React.Component<{}, State> {
           onChange={this.onChange}
           onRemoveScenario={this.onRemoveScenario}
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
-          onCondition={this.onCondition}/>);
+          onCondition={this.onCondition}
+          onProperties={this.onProperties}/>);
     }
     return (
       <div style={Application.STYLE.placeholder}>
@@ -252,6 +253,11 @@ export class Application extends React.Component<{}, State> {
   private onCondition = (layout: Layout, condition: string) => {
     layout.condition = condition;
     ensureBlank(this.state.component);
+    this.setState({revision: this.state.revision + 1});
+  }
+
+  private onProperties = (layout: Layout, properties: string) => {
+    layout.properties = properties;
     this.setState({revision: this.state.revision + 1});
   }
 

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Component, Layout, Node } from '../layout';
 import { LayoutCanvas } from './layout_canvas';
+import { PropertiesEditor } from './properties_editor';
 
 interface Properties {
 
@@ -27,6 +28,9 @@ interface Properties {
 
   /** Called when a scenario's condition is edited. */
   onCondition?: (layout: Layout, condition: string) => void;
+
+  /** Called when a scenario's properties are edited. */
+  onProperties?: (layout: Layout, properties: string) => void;
 }
 
 /** Displays every scenario of a component side by side. */
@@ -48,7 +52,18 @@ export class ScenarioBoard extends React.Component<Properties> {
         <LayoutCanvas layout={layout} selection={this.props.selection}
           onSelect={this.props.onSelect} onChange={this.props.onChange}
           onRemove={this.props.onRemoveBox}/>
+        {this.renderProperties(layout, index)}
       </div>);
+  }
+
+  private renderProperties(layout: Layout, index: number): JSX.Element {
+    if(index >= this.props.component.layouts.length - 1) {
+      return null;
+    }
+    return (
+      <PropertiesEditor properties={layout.properties}
+        onChange={properties =>
+          this.props.onProperties?.(layout, properties)}/>);
   }
 
   private renderCondition(layout: Layout, index: number): JSX.Element {

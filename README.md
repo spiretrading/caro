@@ -61,7 +61,7 @@ format, asking where to put a specification that has no file yet.
         name: string                 'Element:Name' or 'Name'
         layouts: Layout[]            ascending priority
           condition: string          empty for the default
-          constraints: string
+          properties: string         free text, may be empty
           root: Node
           overlays: Node[]           ascending layer order
 
@@ -122,6 +122,22 @@ no empty scenario to clean up. The waiting blank cannot be moved or deleted,
 and it is dropped when the specification is written out: carrying no
 condition, a saved blank would match everything and, sitting last, would take
 precedence over every scenario before it.
+
+Below each scenario's canvas sit its properties, the part of a layout that the
+tree cannot express, written as free text and stored verbatim. About a sixth
+of the layouts in the existing specifications carry a block, most of them a
+line or two, either properties of the layout itself or properties indented
+under the name of one of its boxes. They are not called constraints: the tree
+already carries the layout's constraints in its policies and sizes, and only
+about half of what these blocks hold constrains anything, the rest binding
+content, animating, or positioning. They are not parsed either, because a
+value reaches across the specification and into runtime state, naming another
+component's height, a scroll extent, or a slot to fill, and a field that
+refuses what a designer needs to write is worse than no field at all. They
+belong to the scenario and not to the section because they differ between
+scenarios, which is how a collapse is written: a box bounded by its contents
+under one condition and by nothing under another. The waiting blank carries no
+properties field, so touching a blank scenario always means drawing into it.
 
 Scenarios are independent. Only one is ever laid out at a time, and editing
 one never touches another. A scenario's canvas

@@ -6,8 +6,8 @@ export class Layout {
   /** When this layout applies, empty for the default. */
   public condition: string;
 
-  /** Additional sizing constraints applied to this layout. */
-  public constraints: string;
+  /** The properties applied to this layout and to the boxes it names. */
+  public properties: string;
 
   /** The root of the layout tree. */
   public root: Node;
@@ -15,17 +15,17 @@ export class Layout {
   /** The trees superimposed over the root, in ascending layer order. */
   public overlays: Node[];
 
-  constructor(condition: string, constraints: string, root: Node,
+  constructor(condition: string, properties: string, root: Node,
       overlays: Node[]) {
     this.condition = condition;
-    this.constraints = constraints;
+    this.properties = properties;
     this.root = root;
     this.overlays = overlays;
   }
 
   /** Returns a deep copy of this layout. */
   public clone(): Layout {
-    return new Layout(this.condition, this.constraints, this.root.clone(),
+    return new Layout(this.condition, this.properties, this.root.clone(),
       this.overlays.map(overlay => overlay.clone()));
   }
 
@@ -33,7 +33,7 @@ export class Layout {
   public toObject(): any {
     return {
       condition: this.condition,
-      constraints: this.constraints,
+      properties: this.properties,
       root: this.root.toObject(),
       overlays: this.overlays.map(overlay => overlay.toObject())
     };
@@ -41,7 +41,7 @@ export class Layout {
 
   /** Builds a layout from its JSON representation. */
   public static fromObject(value: any): Layout {
-    return new Layout(value.condition, value.constraints,
+    return new Layout(value.condition, value.properties,
       Node.fromObject(value.root),
       value.overlays.map((overlay: any) => Node.fromObject(overlay)));
   }
