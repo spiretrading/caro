@@ -344,8 +344,25 @@ do not meet leave the space between them to nobody. The same freedom lets two
 boxes come to rest overlapping, since a box covered short of its middle holds
 its ground. Caro neither prevents either nor tidies them away. Tidying would
 invent a box the designer did not draw or move one they did, so both stand
-until the validation view reports them, naming the boxes and how much room is
-in dispute.
+until the error panel reports them.
 
-Still missing: the validation view itself, and there is no undo beyond
-cancelling a gesture in progress.
+An error panel runs along the bottom of the board, between the outline and
+the properties panel, listing what is amiss in the section on screen. It
+reports boxes covering one another, naming the one underneath first, since
+that is the one a press on the canvas cannot reach, and space no box
+accounts for, naming a box along its edge, a gap being nothing that can be
+selected in itself. Pressing what it says selects that box and brings it
+into view. The count lives in the panel and nowhere else, since a tally
+climbing beside the work as it is drawn is the nagging the panel exists to
+spare the designer.
+
+A gap is found by cutting the boxes along every edge any of them has, which
+leaves a grid whose every cell is either wholly covered or wholly empty,
+since no edge can then fall inside a cell; the empty cells touching one
+another are the one gap between them. Adding the boxes' areas up against the
+space they span would answer only whether a gap exists, could never say
+where, and would call a layout whole whenever a gap and an overlap happened
+to cancel out.
+
+Still missing: every check beyond boxes covering one another and the space
+between them.

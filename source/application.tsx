@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank, History,
-  keepsSelection, makeBlank, NodeProperties, OutlinePanel, prune, push,
-  restoreSnapshot, Reveal, ScenarioBoard, SectionPicker, Snapshot,
-  takeSnapshot } from './editor';
+import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
+  ErrorPanel, History, keepsSelection, makeBlank, NodeProperties,
+  OutlinePanel, prune, push, restoreSnapshot, Reveal, ScenarioBoard,
+  SectionPicker, Snapshot, takeSnapshot, validate } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -61,6 +61,9 @@ export class Application extends React.Component<{}, State> {
         <div style={Application.STYLE.content}>
           {this.renderToolbar()}
           {this.renderBody()}
+          {this.state.component !== null &&
+            <ErrorPanel problems={validate(this.state.component)}
+              onSelect={this.onSelectProblem}/>}
         </div>
         {this.state.component !== null &&
           <NodeProperties selection={this.state.selection}
@@ -457,6 +460,11 @@ export class Application extends React.Component<{}, State> {
     this.note({component, selection: [box], active: holder});
     this.setState({component, selection: [box], active: holder,
       reveal: {box}});
+  }
+
+  /** Selects the box a problem stands for, bringing it into view. */
+  private onSelectProblem = (box: Box) => {
+    this.onReveal(this.state.component, box);
   }
 
   private onCopy = (event: KeyboardEvent) => {
