@@ -105,6 +105,10 @@ https://wiki.spiretrading.com/index.php/Layout; the colours come from
 Layouts replace one another wholesale when their condition is met; they do
 not inherit. This differs from component scenarios, which accumulate.
 
+`specifications.md` describes the format in full -- how a scenario is chosen,
+what a policy means, what is repeated and what a file caro calls valid holds
+-- for reading a specification without opening the editor.
+
 ## Status
 
 The app opens on an empty specification, ready to draw, with New, Open and
