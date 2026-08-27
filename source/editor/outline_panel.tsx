@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { Box, Component, Layout } from '../layout';
-import { POLICY_EDGE, PROBLEM_COLOR, REPEAT_DIRECTION } from './palette';
+import { POLICY_EDGE, PROBLEM_COLOR, REPEAT_DIRECTION,
+  WARNING_COLOR } from './palette';
 import { REPEAT_GLYPH } from './repeat';
 import { isBlank } from './scenarios';
-import { Problem } from './validation';
+import { Problem, Severity } from './validation';
 
 /** How far each level of the tree is indented, in pixels. */
 const INDENT = 12;
@@ -171,7 +172,7 @@ export class OutlinePanel extends React.Component<Properties, State> {
         note: `${scenarios.length}`,
         leaf: scenarios.length === 0,
         open,
-        style: {...this.amissStyle(this.sectionAmiss(component)),
+        style: {...this.amissStyle(this.sectionFaults(component)),
           ...this.editingStyle(component)},
         visit: () => this.props.onSection?.(component),
         choose: () => {
@@ -206,7 +207,7 @@ export class OutlinePanel extends React.Component<Properties, State> {
       leaf: layout.boxes.length === 0 && layout.overlays.length === 0,
       open,
       style: {...this.amissStyle(
-          this.frameAmiss(component, layout.boxes)),
+          this.frameFaults(component, layout.boxes)),
         ...this.markFor(layout.boxes)},
       visit: () => this.props.onActivate?.(component, layout.boxes),
       choose: () => {
@@ -236,7 +237,7 @@ export class OutlinePanel extends React.Component<Properties, State> {
         note: `${overlay.length}`,
         leaf: overlay.length === 0,
         open: shown,
-        style: {...this.amissStyle(this.frameAmiss(component, overlay)),
+        style: {...this.amissStyle(this.frameFaults(component, overlay)),
           ...this.markFor(overlay)},
         visit: () => this.props.onActivate?.(component, overlay),
         choose: () => {
@@ -269,7 +270,7 @@ export class OutlinePanel extends React.Component<Properties, State> {
       note: OutlinePanel.sizeOf(box, chosen),
       leaf: true,
       open: false,
-      style: {...this.amissStyle(this.boxAmiss(component, box)),
+      style: {...this.amissStyle(this.boxFaults(component, box)),
         ...(() => {
           if(!chosen) {
             return {};
@@ -438,29 +439,36 @@ export class OutlinePanel extends React.Component<Properties, State> {
     this.setState({open});
   }
 
-  /** Returns the marking that says something in a row is amiss. A row that
-      is selected keeps the marking for that instead, since a box being
-      looked at is named in the error panel anyway. */
-  private amissStyle(amiss: boolean) {
-    if(!amiss) {
+  /** Returns the marking that says something in a row is amiss, in the
+      colour of the worst of it, so that the panel below and the tree agree
+      on how much a row matters. A row that is selected keeps the marking
+      for that instead, since a box being looked at is named in the panel
+      anyway. */
+  private amissStyle(problems: Problem[]) {
+    if(problems.length === 0) {
       return {};
     }
-    return OutlinePanel.STYLE.amiss;
+    if(problems.some(
+        problem => problem.severity === Severity.ERROR)) {
+      return OutlinePanel.STYLE.amiss;
+    }
+    return OutlinePanel.STYLE.warned;
   }
 
-  /** Returns whether anything at all is amiss in a section. */
-  private sectionAmiss(component: Component): boolean {
-    return this.faults(component).length !== 0;
+  /** Returns what is amiss anywhere in a section. */
+  private sectionFaults(component: Component): Problem[] {
+    return this.faults(component);
   }
 
-  /** Returns whether anything is amiss within one canvas. */
-  private frameAmiss(component: Component, frame: Box[]): boolean {
-    return this.faults(component).some(problem => problem.frame === frame);
+  /** Returns what is amiss within one canvas. */
+  private frameFaults(component: Component, frame: Box[]): Problem[] {
+    return this.faults(component).filter(
+      problem => problem.frame === frame);
   }
 
-  /** Returns whether a box is the one a problem points at. */
-  private boxAmiss(component: Component, box: Box): boolean {
-    return this.faults(component).some(problem => problem.box === box);
+  /** Returns what points at a box. */
+  private boxFaults(component: Component, box: Box): Problem[] {
+    return this.faults(component).filter(problem => problem.box === box);
   }
 
   /** Returns what is amiss in a section. */
@@ -605,6 +613,9 @@ export class OutlinePanel extends React.Component<Properties, State> {
     },
     amiss: {
       color: PROBLEM_COLOR
+    },
+    warned: {
+      color: WARNING_COLOR
     },
     editing: {
       fontWeight: 700

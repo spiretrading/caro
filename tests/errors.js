@@ -64,6 +64,22 @@ const SPEC = JSON.stringify({
       ]
     },
     {
+      name: 'Warned',
+      layouts: [
+        {
+          condition: '',
+          properties: '',
+          boxes: [
+            {name: 'Item', x: 0, y: 0, width: 150, height: 26,
+              widthPolicy: 'fill', heightPolicy: 'fit'},
+            {name: '', x: 0, y: 26, width: 150, height: 26,
+              widthPolicy: 'repeat', heightPolicy: 'repeat'}
+          ],
+          overlays: []
+        }
+      ]
+    },
+    {
       name: 'Clean',
       layouts: [
         {
@@ -176,7 +192,8 @@ async function main() {
           const pad = parseInt(b.parentElement.style.paddingLeft) / 12;
           return {
             label: '..'.repeat(pad) + b.textContent.trim(),
-            amiss: getComputedStyle(b).color === 'rgb(178, 34, 34)'
+            amiss: getComputedStyle(b).color === 'rgb(178, 34, 34)',
+            warned: getComputedStyle(b).color === 'rgb(138, 109, 0)'
           };
         });
     };
@@ -237,6 +254,9 @@ async function main() {
   check('the outline marks what is amiss, section included',
     outline.filter(row => row.amiss).map(row => row.label),
     ['Main', '..default', '....<Body>', 'Gapped', 'Shadowed']);
+  check('a section with only a warning is marked apart from an error',
+    outline.filter(row => row.warned).map(row => row.label),
+    ['Warned']);
   check('and leaves the rest alone',
     outline.filter(row => !row.amiss).map(row => row.label).
       indexOf('Clean') !== -1, true);
@@ -278,6 +298,13 @@ async function main() {
     'to select', await evaluate(`window.__working()`), 1);
   check('and nothing is selected', await evaluate(`window.__selected()`),
     null);
+
+  await evaluate(`window.__section('Warned')`);
+  await pause(700);
+  const warned = await evaluate(`window.__panel()`);
+  check('a repeat saying no direction is a warning', warned.rows,
+    ['default: space repeats without saying which way it runs']);
+  check('and counted as one', warned.summary, '1 warning');
 
   await evaluate(`window.__section('Clean')`);
   await pause(700);
