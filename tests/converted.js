@@ -2,9 +2,9 @@
 // directory picker, and reports what the editor makes of them.
 const path = require('path');
 
-// The specifications, which live beside the repository, a layout.json next
-// to each drawing. Suites needing them report themselves skipped when they
-// are not there.
+// The drawings are staged in a folder beside the repository and taken out
+// of it once converted, so this reports itself skipped whenever it stands
+// empty.
 const SPECS = process.env.CARO_SPECS ||
   path.resolve(__dirname, '..', '..', 'specs');
 if(!require('fs').existsSync(SPECS)) {

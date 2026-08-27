@@ -1,0 +1,832 @@
+{
+  "name": "FeesDetailPage",
+  "components": [
+    {
+      "name": "FeesDetailPage",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "PageLayout:\n  content: Main",
+          "boxes": [
+            {
+              "name": "PageLayout",
+              "x": 0,
+              "y": 0,
+              "width": 256,
+              "height": 256,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        },
+        {
+          "condition": "@container (1050px <= width)",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "FeeSchedulePanel",
+              "x": 256,
+              "y": 0,
+              "width": 282,
+              "height": 256,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "PageLayout",
+              "x": 0,
+              "y": 0,
+              "width": 256,
+              "height": 256,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "Main",
+      "layouts": [
+        {
+          "condition": "any < modified",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "RateCard",
+              "x": 0,
+              "y": 134,
+              "width": 284,
+              "height": 434,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 104,
+              "width": 284,
+              "height": 30,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "Header",
+              "x": 0,
+              "y": 0,
+              "width": 284,
+              "height": 104,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": [
+            [
+              {
+                "name": "ActionSheet",
+                "x": 0,
+                "y": 486,
+                "width": 284,
+                "height": 82,
+                "widthPolicy": "fill",
+                "heightPolicy": "fit"
+              },
+              {
+                "name": "",
+                "x": 0,
+                "y": 0,
+                "width": 284,
+                "height": 486,
+                "widthPolicy": "fill",
+                "heightPolicy": "fill"
+              }
+            ]
+          ]
+        },
+        {
+          "condition": "any < modified",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "RateCard",
+              "x": 0,
+              "y": 134,
+              "width": 284,
+              "height": 434,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 104,
+              "width": 284,
+              "height": 30,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "Header",
+              "x": 0,
+              "y": 0,
+              "width": 284,
+              "height": 104,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": [
+            [
+              {
+                "name": "SaveBar",
+                "x": 0,
+                "y": 442,
+                "width": 284,
+                "height": 126,
+                "widthPolicy": "fill",
+                "heightPolicy": "fit"
+              },
+              {
+                "name": "",
+                "x": 0,
+                "y": 0,
+                "width": 284,
+                "height": 442,
+                "widthPolicy": "fill",
+                "heightPolicy": "fill"
+              }
+            ]
+          ]
+        },
+        {
+          "condition": "any < modified",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "RateCard",
+              "x": 0,
+              "y": 134,
+              "width": 732,
+              "height": 466,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 104,
+              "width": 732,
+              "height": 30,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "Header",
+              "x": 0,
+              "y": 0,
+              "width": 732,
+              "height": 104,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": [
+            [
+              {
+                "name": "",
+                "x": 0,
+                "y": 62,
+                "width": 732,
+                "height": 538,
+                "widthPolicy": "fill",
+                "heightPolicy": "fill"
+              },
+              {
+                "name": "SaveBar",
+                "x": 0,
+                "y": 0,
+                "width": 732,
+                "height": 62,
+                "widthPolicy": "fill",
+                "heightPolicy": "fit"
+              }
+            ]
+          ]
+        },
+        {
+          "condition": "@container (768px <= width)",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "RateCard",
+              "x": 0,
+              "y": 134,
+              "width": 732,
+              "height": 466,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 104,
+              "width": 732,
+              "height": 30,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "Header",
+              "x": 0,
+              "y": 0,
+              "width": 732,
+              "height": 104,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "SaveBar",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "Discard",
+              "x": 0,
+              "y": 44,
+              "width": 284,
+              "height": 34,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 34,
+              "width": 284,
+              "height": 10,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "Save",
+              "x": 0,
+              "y": 0,
+              "width": 284,
+              "height": 34,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        },
+        {
+          "condition": "@container (768px <= width)",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "Discard",
+              "x": 592,
+              "y": 10,
+              "width": 140,
+              "height": 34,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 592,
+              "y": 44,
+              "width": 140,
+              "height": 10,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 574,
+              "y": 0,
+              "width": 18,
+              "height": 54,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 434,
+              "y": 44,
+              "width": 140,
+              "height": 10,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 128,
+              "y": 0,
+              "width": 306,
+              "height": 54,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 434,
+              "y": 0,
+              "width": 140,
+              "height": 10,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "Save",
+              "x": 434,
+              "y": 10,
+              "width": 140,
+              "height": 34,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 110,
+              "y": 0,
+              "width": 18,
+              "height": 54,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 35,
+              "width": 110,
+              "height": 19,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "SaveMessage",
+              "x": 0,
+              "y": 19,
+              "width": 110,
+              "height": 16,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 110,
+              "height": 19,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 592,
+              "y": 0,
+              "width": 140,
+              "height": 10,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "Header",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "Metadata",
+              "x": 0,
+              "y": 24,
+              "width": 320,
+              "height": 80,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "Context",
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 24,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "ActionSheet",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "Remove",
+              "x": 0,
+              "y": 0,
+              "width": 246,
+              "height": 34,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "Metadata",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "DateLabel",
+              "x": 0,
+              "y": 20,
+              "width": 70,
+              "height": 16,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 20,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "",
+              "x": 70,
+              "y": 20,
+              "width": 250,
+              "height": 16,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 36,
+              "width": 320,
+              "height": 10,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "DateInput",
+              "x": 0,
+              "y": 46,
+              "width": 320,
+              "height": 34,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            }
+          ],
+          "overlays": []
+        },
+        {
+          "condition": "@container (768px <= width)",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "",
+              "x": 70,
+              "y": 20,
+              "width": 8,
+              "height": 42,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 732,
+              "height": 20,
+              "widthPolicy": "fill",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 20,
+              "width": 70,
+              "height": 13,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "DateLabel",
+              "x": 0,
+              "y": 33,
+              "width": 70,
+              "height": 16,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 49,
+              "width": 70,
+              "height": 13,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 592,
+              "y": 20,
+              "width": 140,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "Remove",
+              "x": 592,
+              "y": 24,
+              "width": 140,
+              "height": 34,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 592,
+              "y": 58,
+              "width": 140,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 238,
+              "y": 20,
+              "width": 354,
+              "height": 42,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "DateInput",
+              "x": 78,
+              "y": 24,
+              "width": 160,
+              "height": 34,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 78,
+              "y": 58,
+              "width": 160,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 78,
+              "y": 20,
+              "width": 160,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            }
+          ],
+          "overlays": []
+        },
+        {
+          "condition": "any < date is today",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 284,
+              "height": 62,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "Context",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "Flag",
+              "x": 0,
+              "y": 4,
+              "width": 26,
+              "height": 16,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fixed"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 20,
+              "width": 26,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 26,
+              "y": 0,
+              "width": 6,
+              "height": 24,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 26,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "TitleBlock",
+              "x": 32,
+              "y": 0,
+              "width": 144,
+              "height": 24,
+              "widthPolicy": "fill",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 176,
+              "y": 0,
+              "width": 120,
+              "height": 24,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "Toggle",
+              "x": 296,
+              "y": 0,
+              "width": 24,
+              "height": 24,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fixed"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    },
+    {
+      "name": "TitleBlock",
+      "layouts": [
+        {
+          "condition": "",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "Name",
+              "x": 0,
+              "y": 4,
+              "width": 70,
+              "height": 16,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 20,
+              "width": 70,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 70,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            }
+          ],
+          "overlays": []
+        },
+        {
+          "condition": "any < date is today",
+          "properties": "",
+          "boxes": [
+            {
+              "name": "",
+              "x": 70,
+              "y": 0,
+              "width": 4,
+              "height": 24,
+              "widthPolicy": "fixed",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 20,
+              "width": 70,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "Name",
+              "x": 0,
+              "y": 4,
+              "width": 70,
+              "height": 16,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 0,
+              "y": 0,
+              "width": 70,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "",
+              "x": 74,
+              "y": 20,
+              "width": 70,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            },
+            {
+              "name": "Time",
+              "x": 74,
+              "y": 4,
+              "width": 70,
+              "height": 16,
+              "widthPolicy": "fit",
+              "heightPolicy": "fit"
+            },
+            {
+              "name": "",
+              "x": 74,
+              "y": 0,
+              "width": 70,
+              "height": 4,
+              "widthPolicy": "fill",
+              "heightPolicy": "fill"
+            }
+          ],
+          "overlays": []
+        }
+      ]
+    }
+  ]
+}

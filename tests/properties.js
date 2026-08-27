@@ -2,16 +2,9 @@
 // that the text matches the file, and that edits survive a save.
 const path = require('path');
 
-// The specifications, which live beside the repository, a layout.json next
-// to each drawing. Suites needing them report themselves skipped when they
-// are not there.
-const SPECS = process.env.CARO_SPECS ||
-  path.resolve(__dirname, '..', '..', 'specs');
-const SPEC = path.join(SPECS, 'fees_detail_page/layout.json');
-if(!require('fs').existsSync(SPEC)) {
-  console.log(`skipped: no specification at ${SPEC}`);
-  process.exit(0);
-}
+// A converted specification kept with the tests, since the folder the
+// drawings are staged in is emptied once they have been converted.
+const SPEC = path.resolve(__dirname, 'fees_detail_page.json');
 
 const http = require('http');
 const fs = require('fs');
