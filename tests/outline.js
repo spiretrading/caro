@@ -119,7 +119,7 @@ async function main(){
       .map(s => getComputedStyle(s).color);
   })()`);
   check('a box names its size in the colours of its policies', shades,
-    ['rgb(178, 129, 0)', 'rgb(178, 129, 0)']);
+    ['rgb(178, 131, 0)', 'rgb(178, 131, 0)']);
 
   // A label opens or shuts everything under it, layers included.
   await evaluate(`Array.from(document.querySelectorAll('button'))

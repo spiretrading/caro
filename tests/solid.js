@@ -151,7 +151,7 @@ async function main() {
   check('a mixed box keeps its neutral fill', one.background,
     'rgb(250, 250, 250)');
   check('its width edges are yellow',
-    one.edges.indexOf('rgb(255, 184, 0)') !== -1, true);
+    one.edges.indexOf('rgb(255, 187, 0)') !== -1, true);
   check('its height edges are blue',
     one.edges.indexOf('rgb(0, 102, 255)') !== -1, true);
 
@@ -180,9 +180,9 @@ async function main() {
   look = await evaluate(LOOK);
   const three = look.find(r => r.name === '<Solid>');
   console.log('   both fixed:', JSON.stringify(three));
-  check('both fixed fills yellow', three.background, 'rgb(255, 184, 0)');
+  check('both fixed fills yellow', three.background, 'rgb(255, 187, 0)');
   check('with a darker yellow edge',
-    three.edges.indexOf('rgb(178, 129, 0)') !== -1, true);
+    three.edges.indexOf('rgb(178, 131, 0)') !== -1, true);
   check('its label stays dark', three.ink, 'rgb(0, 0, 0)');
 
   // The component policy: green fill, dark label, darker green edge.
@@ -208,7 +208,7 @@ async function main() {
   check('a mixed component box is neutral again', five.background,
     'rgb(250, 250, 250)');
   check('its width edges are yellow',
-    five.edges.indexOf('rgb(255, 184, 0)') !== -1, true);
+    five.edges.indexOf('rgb(255, 187, 0)') !== -1, true);
   check('its height edges are green',
     five.edges.indexOf('rgb(0, 191, 45)') !== -1, true);
 
