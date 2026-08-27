@@ -1,5 +1,6 @@
 export { boxAt, copyOf, extentOf, push } from './arrange';
 export { Clipboard, copyBoxes, copyScenario } from './clipboard';
+export { ErrorPanel } from './error_panel';
 export { History, Place, restoreSnapshot, Snapshot,
   takeSnapshot } from './history';
 export { LayoutCanvas, Reveal } from './layout_canvas';
@@ -12,3 +13,5 @@ export { ScenarioBoard } from './scenario_board';
 export { SectionPicker } from './section_picker';
 export { ensureBlank, isBlank, makeBlank, prune } from './scenarios';
 export { keepsSelection } from './selection';
+export { Problem, Severity, validate,
+  validateBoard } from './validation';

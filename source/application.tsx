@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank, History,
-  keepsSelection, makeBlank, NodeProperties, OutlinePanel, prune, push,
-  restoreSnapshot, Reveal, ScenarioBoard, SectionPicker, Snapshot,
-  takeSnapshot } from './editor';
+import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
+  ErrorPanel, History, keepsSelection, makeBlank, NodeProperties,
+  OutlinePanel, prune, push, restoreSnapshot, Reveal, ScenarioBoard,
+  Problem, SectionPicker, Snapshot, takeSnapshot,
+  validateBoard } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -50,17 +51,22 @@ export class Application extends React.Component<{}, State> {
           Use Chrome or Edge, served over localhost or https.
         </div>);
     }
+    const problems = validateBoard(this.state.board);
     return (
       <div style={Application.STYLE.container}>
         {this.state.component !== null &&
           <OutlinePanel sections={this.state.board.components}
             component={this.state.component} active={this.state.active}
-            selection={this.state.selection}
+            selection={this.state.selection} problems={problems}
             onSection={this.onSelectSection} onActivate={this.onActivate}
             onReveal={this.onReveal}/>}
         <div style={Application.STYLE.content}>
           {this.renderToolbar()}
           {this.renderBody()}
+          {this.state.component !== null &&
+            <ErrorPanel
+              problems={problems.get(this.state.component) ?? []}
+              onSelect={this.onSelectProblem}/>}
         </div>
         {this.state.component !== null &&
           <NodeProperties selection={this.state.selection}
@@ -457,6 +463,19 @@ export class Application extends React.Component<{}, State> {
     this.note({component, selection: [box], active: holder});
     this.setState({component, selection: [box], active: holder,
       reveal: {box}});
+  }
+
+  /** Shows a problem on the canvas: the box it stands for where there is
+      one, and otherwise the scenario it was found in, a condition being
+      nothing a box can be selected for. */
+  private onSelectProblem = (problem: Problem) => {
+    if(problem.box !== null) {
+      this.onReveal(this.state.component, problem.box);
+      return;
+    }
+    if(problem.frame !== null) {
+      this.onActivate(this.state.component, problem.frame);
+    }
   }
 
   private onCopy = (event: KeyboardEvent) => {

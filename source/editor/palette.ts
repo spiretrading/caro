@@ -22,6 +22,15 @@ export const POLICY_EDGE = {
   [SizePolicy.REPEAT]: '#5135B2'
 };
 
+/** The colour something amiss is written in. */
+export const PROBLEM_COLOR = '#B22222';
+
+/** The colour something worth another look is written in. */
+export const WARNING_COLOR = '#8A6D00';
+
+/** The colour a layout with nothing amiss is written in. */
+export const VALID_COLOR = '#008620';
+
 /** The colour a name is written in over each policy colour. */
 export const POLICY_INK = {
   [SizePolicy.FIXED]: '#000000',

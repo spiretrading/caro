@@ -344,8 +344,56 @@ do not meet leave the space between them to nobody. The same freedom lets two
 boxes come to rest overlapping, since a box covered short of its middle holds
 its ground. Caro neither prevents either nor tidies them away. Tidying would
 invent a box the designer did not draw or move one they did, so both stand
-until the validation view reports them, naming the boxes and how much room is
-in dispute.
+until the error panel reports them.
 
-Still missing: the validation view itself, and there is no undo beyond
-cancelling a gesture in progress.
+An error panel runs along the bottom of the board, between the outline and
+the properties panel, listing what is amiss in the section on screen. It
+reports boxes covering one another, naming the one underneath first, since
+that is the one a press on the canvas cannot reach, and space no box
+accounts for, naming a box along its edge, a gap being nothing that can be
+selected in itself. Pressing what it says selects that box and brings it
+into view. The count lives in the panel and nowhere else, since a tally
+climbing beside the work as it is drawn is the nagging the panel exists to
+spare the designer.
+
+A gap is found by cutting the boxes along every edge any of them has, which
+leaves a grid whose every cell is either wholly covered or wholly empty,
+since no edge can then fall inside a cell; the empty cells touching one
+another are the one gap between them. Adding the boxes' areas up against the
+space they span would answer only whether a gap exists, could never say
+where, and would call a layout whole whenever a gap and an overlap happened
+to cancel out.
+
+The outline marks what is amiss in red: the section, the scenario or layer
+within it, and the box itself, so that a section can be seen to be wrong
+while it is folded away or while another is being edited, and opening it
+leads down to the box. Every section is read for this, which the whole set
+of specifications does faster than a render. A box that is selected keeps
+the marking for that instead, being already named in the panel below.
+
+A scenario is checked against the ones before it. Reading runs right to
+left and takes the first condition met, so a scenario carrying none is met
+always and nothing before it can ever be reached, and one repeating a
+condition already used shadows the scenario that used it. The blank waiting
+past the last scenario is neither: it carries no condition because nothing
+has been drawn in it, and it is dropped when the specification is written
+out. Pressing such a problem works in the scenario it names, a condition
+being nothing a box can be selected for.
+
+A repeating box is checked against what it repeats. The copies run away from
+one edge, so what is repeated is whatever lies along that edge: something
+has to be there, and it has to span the box exactly, though several boxes
+may span it between them, a repeated row being made of cells. A box that
+repeats without saying which way it runs is a warning rather than an error,
+the drawing being unfinished rather than wrong.
+
+Three further checks guard states no drawing arrives with, each of them a
+rename or a press away in the editor: a section with no name, which nothing
+can name; two sections called the same, which a box naming one cannot tell
+apart; and a layer with nothing drawn in it, which is written out and draws
+nothing. None of them fires anywhere in the specifications as they stand,
+which is the point of having them. A problem about the section itself names
+no box and no canvas, so it is read rather than pressed.
+
+Still missing: a condition is free text and nothing reads it, so nothing
+can say whether the state it names is declared.

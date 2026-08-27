@@ -83,7 +83,7 @@ async function main() {
       }
       return 'ok  ';
     })();
-    console.log(`${mark}  ${suite.replace('.js', '').padEnd(14)}${last}`);
+    console.log(`${mark}  ${suite.replace('.js', '').padEnd(16)}${last}`);
   }
   console.log('');
   if(failed.length === 0) {
