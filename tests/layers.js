@@ -2,12 +2,14 @@
 // layout they are superimposed on, and are edited independently of it.
 const path = require('path');
 
-// The converted specifications, which live beside the repository. Suites
-// needing them report themselves skipped when they are not there.
+// The specifications, which live beside the repository, a layout.json next
+// to each drawing. Suites needing them report themselves skipped when they
+// are not there.
 const SPECS = process.env.CARO_SPECS ||
-  path.resolve(__dirname, '..', '..', 'caro_specs');
-if(!require('fs').existsSync(SPECS)) {
-  console.log(`skipped: no specifications at ${SPECS}`);
+  path.resolve(__dirname, '..', '..', 'specs');
+const SPEC = path.join(SPECS, 'fees_detail_page/layout.json');
+if(!require('fs').existsSync(SPEC)) {
+  console.log(`skipped: no specification at ${SPEC}`);
   process.exit(0);
 }
 
@@ -15,8 +17,6 @@ const http = require('http');
 const fs = require('fs');
 
 const PORT = 9222;
-const SPEC =
-  path.join(SPECS, 'profit_and_loss_page/layout.json');
 
 function get(target) {
   return new Promise((resolve, reject) => {
@@ -234,7 +234,7 @@ async function main() {
   console.log('  ' + SPEC);
   await click('Open');
   await pause(900);
-  await evaluate(`window.__section('Form')`);
+  await evaluate(`window.__section('Main')`);
   await pause(700);
   survey = await evaluate(SURVEY);
   const covered = survey.filter(c => c.card === 0);

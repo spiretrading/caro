@@ -2,12 +2,14 @@
 // inside the properties panel, and that Escape clears it at rest.
 const path = require('path');
 
-// The converted specifications, which live beside the repository. Suites
-// needing them report themselves skipped when they are not there.
+// The specifications, which live beside the repository, a layout.json next
+// to each drawing. Suites needing them report themselves skipped when they
+// are not there.
 const SPECS = process.env.CARO_SPECS ||
-  path.resolve(__dirname, '..', '..', 'caro_specs');
-if(!require('fs').existsSync(SPECS)) {
-  console.log(`skipped: no specifications at ${SPECS}`);
+  path.resolve(__dirname, '..', '..', 'specs');
+const SPEC = path.join(SPECS, 'fees_detail_page/layout.json');
+if(!require('fs').existsSync(SPEC)) {
+  console.log(`skipped: no specification at ${SPEC}`);
   process.exit(0);
 }
 
@@ -15,8 +17,6 @@ const http = require('http');
 const fs = require('fs');
 
 const PORT = 9222;
-const SPEC =
-  path.join(SPECS, 'profit_and_loss_page/layout.json');
 
 function get(target) {
   return new Promise((resolve, reject) => {
@@ -128,10 +128,10 @@ async function main() {
   await pause(1800);
   await evaluate(`window.__click('Open')`);
   await pause(900);
-  await evaluate(`window.__section('ActionSheet')`);
+  await evaluate(`window.__section('Header')`);
   await pause(700);
 
-  const apply = await evaluate(`window.__box('<Apply>')`);
+  const apply = await evaluate(`window.__box('<Metadata>')`);
   const select = async () => {
     await press(apply);
     const probe = await evaluate(`window.__probe()`);
@@ -204,7 +204,7 @@ async function main() {
     (await evaluate(`window.__probe()`)).selected, false);
 
   await select();
-  const download = await evaluate(`window.__box('<Download>')`);
+  const download = await evaluate(`window.__box('<Context>')`);
   await press(download);
   const swapped = await evaluate(`window.__probe()`);
   check('pressing another box selects that one instead',
@@ -222,7 +222,7 @@ async function main() {
   check('and nothing is left selected', deleted.selected, false);
 
   await press(area);
-  await press(await evaluate(`window.__box('<Download>')`));
+  await press(await evaluate(`window.__box('<Context>')`));
   const before = await evaluate(`window.__probe()`);
   check('a box picked after typing is selected', before.selected, true);
   for(const type of ['keyDown', 'keyUp']) {

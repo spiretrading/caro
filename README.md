@@ -65,9 +65,9 @@ listening for the debugging protocol:
     npm start
     msedge --headless --remote-debugging-port=9222 about:blank
 
-A few open converted specifications from `caro_specs` beside this repository,
-or wherever `CARO_SPECS` points; they report themselves skipped when it is
-not there. A single suite runs on its own with `node tests/<suite>.js`.
+A few open the specifications in `specs` beside this repository, or wherever
+`CARO_SPECS` points; they report themselves skipped when it is not there. A
+single suite runs on its own with `node tests/<suite>.js`.
 
 ## Using
 

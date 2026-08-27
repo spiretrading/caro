@@ -2,13 +2,14 @@
 // directory picker, and reports what the editor makes of them.
 const path = require('path');
 
-// The converted specifications, which live beside the repository. Suites
-// needing them report themselves skipped when they are not there.
+// The specifications, which live beside the repository, a layout.json next
+// to each drawing. Suites needing them report themselves skipped when they
+// are not there.
 const SPECS = process.env.CARO_SPECS ||
-  path.resolve(__dirname, '..', '..', 'caro_specs');
+  path.resolve(__dirname, '..', '..', 'specs');
 if(!require('fs').existsSync(SPECS)) {
   console.log(`skipped: no specifications at ${SPECS}`);
-  process.exit(failures === 0 ? 0 : 1);
+  process.exit(0);
 }
 
 const http = require('http');

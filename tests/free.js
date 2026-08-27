@@ -1,12 +1,14 @@
 // Boxes sit where they are put and keep any gaps between them.
 const path = require('path');
 
-// The converted specifications, which live beside the repository. Suites
-// needing them report themselves skipped when they are not there.
+// The specifications, which live beside the repository, a layout.json next
+// to each drawing. Suites needing them report themselves skipped when they
+// are not there.
 const SPECS = process.env.CARO_SPECS ||
-  path.resolve(__dirname, '..', '..', 'caro_specs');
-if(!require('fs').existsSync(SPECS)) {
-  console.log(`skipped: no specifications at ${SPECS}`);
+  path.resolve(__dirname, '..', '..', 'specs');
+const SPEC = path.join(SPECS, 'fees_detail_page/layout.json');
+if(!require('fs').existsSync(SPEC)) {
+  console.log(`skipped: no specification at ${SPEC}`);
   process.exit(0);
 }
 
@@ -82,9 +84,7 @@ async function main(){
   check('and the box it landed on stayed where it was',
     [b.x, b.y], [250, 120]);
   // a converted specification opens and draws where it was drawn
-  const TEXT = fs.readFileSync(
-    path.join(SPECS, 'profit_and_loss_page/layout.json'),
-    'utf8');
+  const TEXT = fs.readFileSync(SPEC, 'utf8');
   await evaluate(`(() => {
     const TEXT = ${JSON.stringify(TEXT)};
     const handle = {name: 'layout.json',

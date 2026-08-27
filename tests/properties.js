@@ -2,12 +2,14 @@
 // that the text matches the file, and that edits survive a save.
 const path = require('path');
 
-// The converted specifications, which live beside the repository. Suites
-// needing them report themselves skipped when they are not there.
+// The specifications, which live beside the repository, a layout.json next
+// to each drawing. Suites needing them report themselves skipped when they
+// are not there.
 const SPECS = process.env.CARO_SPECS ||
-  path.resolve(__dirname, '..', '..', 'caro_specs');
-if(!require('fs').existsSync(SPECS)) {
-  console.log(`skipped: no specifications at ${SPECS}`);
+  path.resolve(__dirname, '..', '..', 'specs');
+const SPEC = path.join(SPECS, 'fees_detail_page/layout.json');
+if(!require('fs').existsSync(SPEC)) {
+  console.log(`skipped: no specification at ${SPEC}`);
   process.exit(0);
 }
 
@@ -15,8 +17,6 @@ const http = require('http');
 const fs = require('fs');
 
 const PORT = 9222;
-const SPEC =
-  path.join(SPECS, 'profit_and_loss_page/layout.json');
 const EDIT = 'display: flex\nContent:\n  overflow-y: auto';
 
 function get(target) {
@@ -163,12 +163,12 @@ async function main() {
     return report;
   };
 
-  await visit('ProfitAndLossPage');
-  await visit('Div:FormContainer');
-  await visit('ActionSheet');
+  await visit('FeesDetailPage');
+  await visit('SaveBar');
+  await visit('Metadata');
 
   console.log('');
-  console.log('  editing ActionSheet');
+  console.log('  editing Metadata');
   await evaluate(`window.__type(
     document.querySelectorAll('textarea')[0], ${JSON.stringify(EDIT)})`);
   await new Promise(r => setTimeout(r, 300));
@@ -176,10 +176,10 @@ async function main() {
   check('the edit is kept', report.areas[0].value, EDIT);
   check('the field grows to fit it', report.areas[0].rows, 3);
   check('the scenario count is undisturbed', report.scenarios,
-    sectionOf('ActionSheet').layouts.length + 1);
+    sectionOf('Metadata').layouts.length + 1);
   check('the other scenarios are untouched',
     report.areas.slice(1, -1).map(a => a.value),
-    sectionOf('ActionSheet').layouts.slice(1).map(l => l.properties));
+    sectionOf('Metadata').layouts.slice(1).map(l => l.properties));
 
   await evaluate(`window.__click('Save')`);
   await new Promise(r => setTimeout(r, 900));
@@ -188,14 +188,14 @@ async function main() {
   const saved = JSON.parse(written);
   check('every section survived the save',
     saved.components.length, board.components.length);
-  const section = saved.components.find(c => c.name === 'ActionSheet');
+  const section = saved.components.find(c => c.name === 'Metadata');
   check('the edit reached the file', section.layouts[0].properties, EDIT);
   check('no blank scenario was saved',
-    section.layouts.length, sectionOf('ActionSheet').layouts.length);
+    section.layouts.length, sectionOf('Metadata').layouts.length);
   check('every other block round tripped verbatim',
-    saved.components.filter(c => c.name !== 'ActionSheet')
+    saved.components.filter(c => c.name !== 'Metadata')
       .map(c => c.layouts.map(l => l.properties)),
-    board.components.filter(c => c.name !== 'ActionSheet')
+    board.components.filter(c => c.name !== 'Metadata')
       .map(c => c.layouts.map(l => l.properties)));
 
   console.log(failures === 0 ? '\nproperties editor works' :
