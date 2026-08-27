@@ -9,8 +9,9 @@ interface Properties {
   /** The boxes currently selected, empty when none are. */
   selection: Box[];
 
-  /** Called when a property of the node changes. */
-  onChange?: () => void;
+  /** Called when a property of the node changes, naming what was changed so
+      that a run of changes to the same thing is taken back together. */
+  onCommit?: (tag: string) => void;
 
   /** Called when the node is removed. */
   onRemove?: () => void;
@@ -125,17 +126,17 @@ export class NodeProperties extends React.Component<Properties> {
 
   private onName = (event: React.ChangeEvent<HTMLInputElement>) => {
     this.props.selection[0].name = event.target.value;
-    this.props.onChange?.();
+    this.props.onCommit?.('name');
   }
 
   private onWidthPolicy = (policy: SizePolicy) => {
     setWidthPolicy(this.props.selection[0], policy);
-    this.props.onChange?.();
+    this.props.onCommit?.(null);
   }
 
   private onHeightPolicy = (policy: SizePolicy) => {
     setHeightPolicy(this.props.selection[0], policy);
-    this.props.onChange?.();
+    this.props.onCommit?.(null);
   }
 
   private onDirection = (direction: RepeatDirection) => {
@@ -145,17 +146,17 @@ export class NodeProperties extends React.Component<Properties> {
     } else {
       node.repeatDirection = direction;
     }
-    this.props.onChange?.();
+    this.props.onCommit?.(null);
   }
 
   private onWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
     this.props.selection[0].width = Number(event.target.value);
-    this.props.onChange?.();
+    this.props.onCommit?.('width');
   }
 
   private onHeight = (event: React.ChangeEvent<HTMLInputElement>) => {
     this.props.selection[0].height = Number(event.target.value);
-    this.props.onChange?.();
+    this.props.onCommit?.('height');
   }
 
   private static readonly STYLE = {

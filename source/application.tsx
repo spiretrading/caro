@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
+import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank, History,
   keepsSelection, makeBlank, NodeProperties, OutlinePanel, prune, push,
-  Reveal, ScenarioBoard, SectionPicker } from './editor';
+  restoreSnapshot, Reveal, ScenarioBoard, SectionPicker, Snapshot,
+  takeSnapshot } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -38,6 +39,7 @@ export class Application extends React.Component<{}, State> {
       revision: 0,
       status: ''
     };
+    this.history = new History(Application.snapshotOf(this.state));
   }
 
   public render(): JSX.Element {
@@ -62,7 +64,7 @@ export class Application extends React.Component<{}, State> {
         </div>
         {this.state.component !== null &&
           <NodeProperties selection={this.state.selection}
-            onChange={this.onChange} onRemove={this.onRemove}/>}
+            onCommit={this.onEdit} onRemove={this.onRemove}/>}
       </div>);
   }
 
@@ -77,6 +79,68 @@ export class Application extends React.Component<{}, State> {
   }
 
   private clipboard: Clipboard = null;
+  private history: History;
+
+  /** Returns a specification as it stands, along with what is being worked
+      on in it. */
+  private static snapshotOf(state: State): Snapshot {
+    return takeSnapshot(state.board, state.component, state.selection,
+      state.active);
+  }
+
+  /** Applies a change to the specification and remembers it, so that it can
+      be taken back. Changes tagged alike are taken back together. The change
+      is remembered before it is drawn, so that what can be taken back is
+      drawn along with it. */
+  private commit(changes: Partial<State>, tag: string): void {
+    if(this.state.component !== null) {
+      ensureBlank(this.state.component);
+    }
+    this.history.record(Application.snapshotOf(
+      {...this.state, ...changes} as State), tag);
+    this.setState({...changes, revision: this.state.revision + 1} as State);
+  }
+
+  /** Notes what is now being worked on, which is put back along with the
+      change it belongs to. */
+  private note(changes: Partial<State>): void {
+    this.history.note(Application.snapshotOf(
+      {...this.state, ...changes} as State));
+  }
+
+  /** Applies a whole specification, which is then all there is to go back
+      to. */
+  private restart(changes: Partial<State>): void {
+    this.history.reset(Application.snapshotOf(
+      {...this.state, ...changes} as State));
+    this.setState(changes as State);
+  }
+
+  private onUndo = () => {
+    this.recall(this.history.undo(), 'Took back the last change.');
+  }
+
+  private onRedo = () => {
+    this.recall(this.history.redo(), 'Put the change back.');
+  }
+
+  /** Puts a remembered specification back on screen, finding again within
+      it whatever was being worked on when it was remembered. */
+  private recall(snapshot: Snapshot, status: string): void {
+    if(snapshot === null) {
+      return;
+    }
+    const restored = restoreSnapshot(snapshot);
+    this.setState({
+      board: restored.board,
+      component: restored.component,
+      selection: restored.selection,
+      active: restored.active,
+      reveal: null,
+      revision: this.state.revision + 1,
+      status
+    });
+  }
 
   private onMouseDown = (event: MouseEvent) => {
     Application.release(event.target);
@@ -84,6 +148,7 @@ export class Application extends React.Component<{}, State> {
         keepsSelection(event.target)) {
       return;
     }
+    this.note({selection: [], active: null});
     this.setState({selection: [], active: null});
   }
 
@@ -108,6 +173,16 @@ export class Application extends React.Component<{}, State> {
         this.onCopy(event);
       } else if(event.key === 'v' || event.key === 'V') {
         this.onPaste(event);
+      } else if(event.key === 'z' || event.key === 'Z') {
+        event.preventDefault();
+        if(event.shiftKey) {
+          this.onRedo();
+        } else {
+          this.onUndo();
+        }
+      } else if(event.key === 'y' || event.key === 'Y') {
+        event.preventDefault();
+        this.onRedo();
       }
       return;
     }
@@ -115,6 +190,7 @@ export class Application extends React.Component<{}, State> {
       return;
     }
     if(event.key === 'Escape') {
+      this.note({selection: [], active: null});
       this.setState({selection: [], active: null});
       return;
     }
@@ -145,6 +221,14 @@ export class Application extends React.Component<{}, State> {
         </button>
         <button style={Application.STYLE.button} onClick={this.onSave}>
           Save
+        </button>
+        <button style={Application.STYLE.control} title='Undo'
+            disabled={!this.history.canUndo} onClick={this.onUndo}>
+          {'\u21B6'}
+        </button>
+        <button style={Application.STYLE.control} title='Redo'
+            disabled={!this.history.canRedo} onClick={this.onRedo}>
+          {'\u21B7'}
         </button>
         {this.state.component !== null &&
           <SectionPicker sections={this.state.board.components}
@@ -210,7 +294,7 @@ export class Application extends React.Component<{}, State> {
         <ScenarioBoard component={this.state.component}
           selection={this.state.selection} active={this.state.active}
           reveal={this.state.reveal} onSelect={this.onSelect}
-          onChange={this.onChange}
+          onChange={this.onChange} onCommit={this.onCommit}
           onRemoveScenario={this.onRemoveScenario}
           onCopyScenario={this.onCopyScenario}
           onRemoveBox={this.onRemove} onMove={this.onMoveScenario}
@@ -232,7 +316,7 @@ export class Application extends React.Component<{}, State> {
   private onNew = () => {
     const board = Application.createBoard();
     const component = board.components[0];
-    this.setState({
+    this.restart({
       file: null,
       board,
       component,
@@ -269,8 +353,8 @@ export class Application extends React.Component<{}, State> {
       if(component !== null) {
         ensureBlank(component);
       }
-      this.setState({file, board, component, selection: [], active: null,
-      status});
+      this.restart({file, board, component, selection: [], active: null,
+        status});
     } catch(error) {
       this.setState({status: `${error}`});
     }
@@ -278,6 +362,7 @@ export class Application extends React.Component<{}, State> {
 
   private onSelectSection = (component: Component) => {
     ensureBlank(component);
+    this.note({component, selection: [], active: null});
     this.setState({component, selection: [], active: null});
   }
 
@@ -288,12 +373,11 @@ export class Application extends React.Component<{}, State> {
       return;
     }
     layouts.splice(index, 1);
-    this.setState({
+    this.commit({
       selection: [],
       active: null,
-      revision: this.state.revision + 1,
       status: 'Removed a scenario.'
-    });
+    }, null);
   }
 
   private onMoveScenario = (layout: Layout, offset: number) => {
@@ -305,7 +389,7 @@ export class Application extends React.Component<{}, State> {
     }
     layouts.splice(index, 1);
     layouts.splice(target, 0, layout);
-    this.setState({revision: this.state.revision + 1});
+    this.commit({status: 'Moved a scenario.'}, null);
   }
 
   private onAddSection = () => {
@@ -314,13 +398,12 @@ export class Application extends React.Component<{}, State> {
       Application.nextName(this.state.board), []);
     ensureBlank(component);
     components.splice(this.componentIndex() + 1, 0, component);
-    this.setState({
+    this.commit({
       component,
       selection: [],
       active: null,
-      revision: this.state.revision + 1,
       status: `Added ${component.name}.`
-    });
+    }, null);
   }
 
   private onRemoveSection = () => {
@@ -331,18 +414,17 @@ export class Application extends React.Component<{}, State> {
     const index = this.componentIndex();
     components.splice(index, 1);
     const component = components[Math.min(index, components.length - 1)];
-    this.setState({
+    this.commit({
       component,
       selection: [],
       active: null,
-      revision: this.state.revision + 1,
       status: 'Removed a section.'
-    });
+    }, null);
   }
 
   private onRename = (name: string) => {
     this.state.component.name = name;
-    this.setState({revision: this.state.revision + 1});
+    this.commit({}, 'section');
   }
 
   private static nextName(board: Board): string {
@@ -355,28 +437,26 @@ export class Application extends React.Component<{}, State> {
 
   private onCondition = (layout: Layout, condition: string) => {
     layout.condition = condition;
-    ensureBlank(this.state.component);
-    this.setState({revision: this.state.revision + 1});
+    this.commit({}, 'condition');
   }
 
   private onProperties = (layout: Layout, properties: string) => {
     layout.properties = properties;
-    this.setState({revision: this.state.revision + 1});
+    this.commit({}, 'properties');
   }
 
   private onActivate = (component: Component, boxes: Box[]) => {
     ensureBlank(component);
+    this.note({component, active: boxes, selection: []});
     this.setState({component, active: boxes, selection: []});
   }
 
   private onReveal = (component: Component, box: Box) => {
     ensureBlank(component);
-    this.setState({
-      component,
-      selection: [box],
-      active: Application.holderIn(component, box),
-      reveal: {box}
-    });
+    const holder = Application.holderIn(component, box);
+    this.note({component, selection: [box], active: holder});
+    this.setState({component, selection: [box], active: holder,
+      reveal: {box}});
   }
 
   private onCopy = (event: KeyboardEvent) => {
@@ -423,12 +503,10 @@ export class Application extends React.Component<{}, State> {
     holder.push(...pasted);
     push(holder, settled);
     this.clipboard = copyBoxes(pasted);
-    ensureBlank(this.state.component);
-    this.setState({
+    this.commit({
       selection: pasted,
-      revision: this.state.revision + 1,
       status: Application.count(pasted.length, 'Pasted')
-    });
+    }, null);
   }
 
   /** Returns the boxes a paste goes into, which is the canvas last worked
@@ -467,13 +545,11 @@ export class Application extends React.Component<{}, State> {
       return source + 1;
     })();
     layouts.splice(index, 0, this.clipboard.layout.clone());
-    ensureBlank(this.state.component);
-    this.setState({
+    this.commit({
       selection: [],
       active: null,
-      revision: this.state.revision + 1,
       status: 'Pasted a scenario.'
-    });
+    }, null);
   }
 
   private static count(many: number, verb: string): string {
@@ -485,6 +561,7 @@ export class Application extends React.Component<{}, State> {
 
   private onSelect = (nodes: Box[], extend: boolean, holder: Box[]) => {
     if(!extend) {
+      this.note({selection: nodes, active: holder});
       this.setState({selection: nodes, active: holder});
       return;
     }
@@ -497,12 +574,23 @@ export class Application extends React.Component<{}, State> {
         selection.splice(index, 1);
       }
     }
+    this.note({selection, active: holder});
     this.setState({selection, active: holder});
   }
 
+  /** Redraws what a gesture is doing, which is not a change to remember
+      until the gesture is over. */
   private onChange = () => {
     ensureBlank(this.state.component);
     this.setState({revision: this.state.revision + 1});
+  }
+
+  private onCommit = () => {
+    this.commit({}, null);
+  }
+
+  private onEdit = (tag: string) => {
+    this.commit({}, tag);
   }
 
   private onSave = async () => {
@@ -522,20 +610,16 @@ export class Application extends React.Component<{}, State> {
 
   private onAddLayer = (layout: Layout) => {
     layout.overlays.push([]);
-    this.setState({
-      revision: this.state.revision + 1,
-      status: `Added layer ${layout.overlays.length}.`
-    });
+    this.commit({status: `Added layer ${layout.overlays.length}.`}, null);
   }
 
   private onRemoveLayer = (layout: Layout, layer: number) => {
     layout.overlays.splice(layer, 1);
-    this.setState({
+    this.commit({
       selection: [],
       active: null,
-      revision: this.state.revision + 1,
       status: 'Removed a layer.'
-    });
+    }, null);
   }
 
   private onRemove = () => {
@@ -557,12 +641,7 @@ export class Application extends React.Component<{}, State> {
       }
       return `Removed ${removed} boxes.`;
     })();
-    this.setState({
-      selection: [],
-      active: null,
-      revision: this.state.revision + 1,
-      status
-    });
+    this.commit({selection: [], active: null, status}, null);
   }
 
   /** Returns the list of boxes a box belongs to, which is a layout's own or

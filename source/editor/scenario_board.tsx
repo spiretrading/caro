@@ -37,6 +37,9 @@ interface Properties {
   /** Called whenever a scenario's layout has been modified. */
   onChange?: () => void;
 
+  /** Called when a gesture is over and the change it made is complete. */
+  onCommit?: () => void;
+
   /** Called to remove a scenario. */
   onRemoveScenario?: (layout: Layout) => void;
 
@@ -145,6 +148,7 @@ export class ScenarioBoard extends React.Component<Properties> {
           active={layout.boxes === this.props.active}
           reveal={this.props.reveal}
           onSelect={this.props.onSelect} onChange={this.props.onChange}
+          onCommit={this.props.onCommit}
           onRemove={this.props.onRemoveBox}/>
         {layout.overlays.map((overlay, layer) =>
           this.renderLayer(layout, overlay, layer))}
@@ -168,6 +172,7 @@ export class ScenarioBoard extends React.Component<Properties> {
           zoom={this.props.zoom} active={overlay === this.props.active}
           reveal={this.props.reveal}
           onSelect={this.props.onSelect} onChange={this.props.onChange}
+          onCommit={this.props.onCommit}
           onRemove={this.props.onRemoveBox}/>
       </div>);
   }

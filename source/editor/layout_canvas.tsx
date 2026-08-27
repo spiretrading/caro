@@ -128,6 +128,9 @@ interface Properties {
   /** Called whenever the layout has been modified. */
   onChange?: () => void;
 
+  /** Called when a gesture is over and the change it made is complete. */
+  onCommit?: () => void;
+
   /** Called when the selected box is deleted from the canvas. */
   onRemove?: () => void;
 }
@@ -644,13 +647,13 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       return;
     }
     if(gesture !== Gesture.DRAW) {
-      this.props.onChange?.();
+      this.props.onCommit?.();
       return;
     }
     const box = this.build(region);
     this.props.boxes.push(box);
     this.props.onSelect?.([box], false, this.props.boxes);
-    this.props.onChange?.();
+    this.props.onCommit?.();
   }
 
   /** Returns a box covering a drawn rectangle. */
