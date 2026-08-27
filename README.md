@@ -371,5 +371,21 @@ leads down to the box. Every section is read for this, which the whole set
 of specifications does faster than a render. A box that is selected keeps
 the marking for that instead, being already named in the panel below.
 
-Still missing: every check beyond boxes covering one another and the space
-between them.
+A scenario is checked against the ones before it. Reading runs right to
+left and takes the first condition met, so a scenario carrying none is met
+always and nothing before it can ever be reached, and one repeating a
+condition already used shadows the scenario that used it. The blank waiting
+past the last scenario is neither: it carries no condition because nothing
+has been drawn in it, and it is dropped when the specification is written
+out. Pressing such a problem works in the scenario it names, a condition
+being nothing a box can be selected for.
+
+A repeating box is checked against what it repeats. The copies run away from
+one edge, so what is repeated is whatever lies along that edge: something
+has to be there, and it has to span the box exactly, though several boxes
+may span it between them, a repeated row being made of cells. A box that
+repeats without saying which way it runs is a warning rather than an error,
+the drawing being unfinished rather than wrong.
+
+Still missing: a condition is free text and nothing reads it, so nothing
+can say whether the state it names is declared.

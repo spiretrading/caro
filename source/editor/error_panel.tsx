@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Box } from '../layout';
 import { PROBLEM_COLOR, VALID_COLOR, WARNING_COLOR } from './palette';
 import { Problem, Severity } from './validation';
 
@@ -8,8 +7,8 @@ interface Properties {
   /** What is amiss in the section being edited, empty when nothing is. */
   problems: Problem[];
 
-  /** Called to select the box a problem stands for. */
-  onSelect?: (box: Box) => void;
+  /** Called to show a problem on the canvas. */
+  onSelect?: (problem: Problem) => void;
 }
 
 /** Lists what is amiss in the section being edited, along the bottom of the
@@ -33,9 +32,8 @@ export class ErrorPanel extends React.Component<Properties> {
       <button key={index} data-problem=''
           style={{...ErrorPanel.STYLE.row,
             ...ErrorPanel.markFor(problem.severity)}}
-          disabled={problem.box === null}
-          title='Select the box underneath'
-          onClick={() => this.props.onSelect?.(problem.box)}>
+          title='Show it on the canvas'
+          onClick={() => this.props.onSelect?.(problem)}>
         {problem.message}
       </button>);
   }

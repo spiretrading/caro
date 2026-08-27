@@ -1,4 +1,6 @@
-import { Board, Box, Component, Layout } from '../layout';
+import { Board, Box, Component, Layout, SizePolicy } from '../layout';
+import { Edge, runsFrom } from './repeat';
+import { isBlank } from './scenarios';
 
 /** How much a problem matters. */
 export enum Severity {
@@ -48,6 +50,7 @@ export function validate(component: Component): Problem[] {
   for(let index = 0; index !== component.layouts.length; ++index) {
     const layout = component.layouts[index];
     const caption = captionOf(layout, index);
+    findUnreachable(component, layout, index, caption, problems);
     findFaults(layout.boxes, caption, problems);
     for(let order = 0; order !== layout.overlays.length; ++order) {
       findFaults(layout.overlays[order], `${caption}, layer ${order + 1}`,
@@ -62,6 +65,132 @@ function findFaults(boxes: Box[], caption: string,
     problems: Problem[]): void {
   findOverlaps(boxes, caption, problems);
   findGaps(boxes, caption, problems);
+  findRepeats(boxes, caption, problems);
+}
+
+/** Reports a scenario that leaves an earlier one unreachable. A scenario is
+    chosen by reading right to left and taking the first whose condition is
+    met, so one carrying no condition is met always and nothing before it can
+    be reached, and one repeating a condition already used shadows the
+    scenario that used it. The blank waiting past the last scenario is none
+    of this: it carries no condition because nothing has been drawn in it,
+    and it is dropped when the specification is written out. */
+function findUnreachable(component: Component, layout: Layout, index: number,
+    caption: string, problems: Problem[]): void {
+  if(index === 0 || isBlank(layout)) {
+    return;
+  }
+  if(layout.condition === '') {
+    problems.push({
+      severity: Severity.ERROR,
+      message: `${caption}: matches everything, so no scenario before it ` +
+        'can be reached',
+      frame: layout.boxes,
+      box: null
+    });
+    return;
+  }
+  for(let before = 0; before !== index; ++before) {
+    if(component.layouts[before].condition !== layout.condition) {
+      continue;
+    }
+    problems.push({
+      severity: Severity.ERROR,
+      message: `${caption}: repeats a condition, so the earlier scenario ` +
+        'cannot be reached',
+      frame: layout.boxes,
+      box: null
+    });
+    return;
+  }
+}
+
+/** Reports a repeating box that does not say which way it runs, or that has
+    nothing to repeat. The copies run away from one edge, so what is being
+    repeated is whatever lies along that edge, and it has to span the box
+    exactly. Several boxes may span it between them, a repeated row being
+    made of cells. */
+function findRepeats(boxes: Box[], caption: string,
+    problems: Problem[]): void {
+  for(const box of boxes) {
+    if(box.widthPolicy !== SizePolicy.REPEAT) {
+      continue;
+    }
+    if(box.repeatDirection === null) {
+      problems.push({
+        severity: Severity.WARNING,
+        message: `${caption}: ${nameOf(box)} repeats without saying which ` +
+          'way it runs',
+        frame: boxes,
+        box
+      });
+      continue;
+    }
+    const edge = runsFrom(box.repeatDirection);
+    const near = boxes.filter(
+      other => other !== box && meets(edge, other, box));
+    if(near.length === 0) {
+      problems.push({
+        severity: Severity.ERROR,
+        message: `${caption}: ${nameOf(box)} repeats ` +
+          `${box.repeatDirection} with nothing on its ${edge} to repeat`,
+        frame: boxes,
+        box
+      });
+      continue;
+    }
+    if(!spans(edge, near, box)) {
+      problems.push({
+        severity: Severity.ERROR,
+        message: `${caption}: ${nameOf(box)} repeats ` +
+          `${box.repeatDirection} but what is on its ${edge} does not span ` +
+          'it',
+        frame: boxes,
+        box
+      });
+    }
+  }
+}
+
+/** Returns whether a box lies against one edge of another. */
+function meets(edge: Edge, box: Box, repeat: Box): boolean {
+  if(edge === 'top') {
+    return box.bottom === repeat.y && box.x < repeat.right &&
+      box.right > repeat.x;
+  }
+  if(edge === 'bottom') {
+    return box.y === repeat.bottom && box.x < repeat.right &&
+      box.right > repeat.x;
+  }
+  if(edge === 'left') {
+    return box.right === repeat.x && box.y < repeat.bottom &&
+      box.bottom > repeat.y;
+  }
+  return box.x === repeat.right && box.y < repeat.bottom &&
+    box.bottom > repeat.y;
+}
+
+/** Returns whether the boxes lying along an edge span it exactly. */
+function spans(edge: Edge, near: Box[], repeat: Box): boolean {
+  const runs = near.map(box => alongOf(edge, box));
+  const want = alongOf(edge, repeat);
+  runs.sort((first, second) => first[0] - second[0]);
+  let reach = runs[0][0];
+  for(const run of runs) {
+    if(run[0] > reach) {
+      return false;
+    }
+    reach = Math.max(reach, run[1]);
+  }
+  return runs[0][0] === want[0] && reach === want[1];
+}
+
+/** Returns how far a box runs along an edge. */
+function alongOf(edge: Edge, box: Box): number[] {
+  if(edge === 'top' || edge === 'bottom') {
+    return [box.x, box.right];
+  }
+  return [box.y, box.bottom];
 }
 
 /** Reports each pair of boxes covering the same space, naming the one

@@ -2,7 +2,8 @@ import * as React from 'react';
 import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
   ErrorPanel, History, keepsSelection, makeBlank, NodeProperties,
   OutlinePanel, prune, push, restoreSnapshot, Reveal, ScenarioBoard,
-  SectionPicker, Snapshot, takeSnapshot, validateBoard } from './editor';
+  Problem, SectionPicker, Snapshot, takeSnapshot,
+  validateBoard } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -464,9 +465,15 @@ export class Application extends React.Component<{}, State> {
       reveal: {box}});
   }
 
-  /** Selects the box a problem stands for, bringing it into view. */
-  private onSelectProblem = (box: Box) => {
-    this.onReveal(this.state.component, box);
+  /** Shows a problem on the canvas: the box it stands for where there is
+      one, and otherwise the scenario it was found in, a condition being
+      nothing a box can be selected for. */
+  private onSelectProblem = (problem: Problem) => {
+    if(problem.box !== null) {
+      this.onReveal(this.state.component, problem.box);
+      return;
+    }
+    this.onActivate(this.state.component, problem.frame);
   }
 
   private onCopy = (event: KeyboardEvent) => {

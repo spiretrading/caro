@@ -41,6 +41,29 @@ const SPEC = JSON.stringify({
       ]
     },
     {
+      name: 'Shadowed',
+      layouts: [
+        {
+          condition: '',
+          properties: '',
+          boxes: [
+            {name: 'First', x: 0, y: 0, width: 100, height: 100,
+              widthPolicy: 'fill', heightPolicy: 'fit'}
+          ],
+          overlays: []
+        },
+        {
+          condition: '',
+          properties: '',
+          boxes: [
+            {name: 'Second', x: 0, y: 0, width: 100, height: 100,
+              widthPolicy: 'fill', heightPolicy: 'fit'}
+          ],
+          overlays: []
+        }
+      ]
+    },
+    {
       name: 'Clean',
       layouts: [
         {
@@ -157,6 +180,9 @@ async function main() {
           };
         });
     };
+    window.__working = () => Array.from(
+      document.querySelectorAll('[data-canvas]')).findIndex(
+        canvas => canvas.style.outline.indexOf('rgb(104, 75, 199)') !== -1);
     window.__row = index => {
       const row = document.querySelectorAll('[data-problem]')[index];
       const r = row.getBoundingClientRect();
@@ -210,7 +236,7 @@ async function main() {
   console.log('     ' + outline.map(row => row.label).join(' | '));
   check('the outline marks what is amiss, section included',
     outline.filter(row => row.amiss).map(row => row.label),
-    ['Main', '..default', '....<Body>', 'Gapped']);
+    ['Main', '..default', '....<Body>', 'Gapped', 'Shadowed']);
   check('and leaves the rest alone',
     outline.filter(row => !row.amiss).map(row => row.label).
       indexOf('Clean') !== -1, true);
@@ -238,6 +264,20 @@ async function main() {
   await press(await evaluate(`window.__row(0)`));
   check('pressing what it says selects a box along the gap',
     await evaluate(`window.__selected()`), 'Left');
+
+  await evaluate(`window.__section('Shadowed')`);
+  await pause(700);
+  const shadowed = await evaluate(`window.__panel()`);
+  check('a scenario matching everything is reported', shadowed.rows,
+    ['no condition: matches everything, so no scenario before it can be ' +
+      'reached']);
+  check('nothing is being worked in yet',
+    await evaluate(`window.__working()`), -1);
+  await press(await evaluate(`window.__row(0)`));
+  check('pressing it works in the scenario it names, there being no box ' +
+    'to select', await evaluate(`window.__working()`), 1);
+  check('and nothing is selected', await evaluate(`window.__selected()`),
+    null);
 
   await evaluate(`window.__section('Clean')`);
   await pause(700);

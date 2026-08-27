@@ -1,5 +1,5 @@
 // Checks what the error panel is told about a section.
-const {Board, Box, Component, Layout,
+const {Board, Box, Component, Layout, RepeatDirection,
   SizePolicy} = require('./cjs/layout/index.js');
 const {Severity, validate,
   validateBoard} = require('./cjs/editor/validation.js');
@@ -18,6 +18,13 @@ function check(label, actual, expected) {
 function box(name, x, y, width, height) {
   return new Box(name, x, y, width, height, SizePolicy.FIXED,
     SizePolicy.FIXED);
+}
+
+function repeating(x, y, width, height, direction) {
+  const made = new Box('', x, y, width, height, SizePolicy.REPEAT,
+    SizePolicy.REPEAT);
+  made.repeatDirection = direction;
+  return made;
 }
 
 function said(problems) {
@@ -119,6 +126,8 @@ const scenarios = new Component('Main', [
 check('a scenario is named by its condition, and the default by name',
   said(validate(scenarios)), [
     'any < modified: <Body> is covered by <Header>',
+    'no condition: matches everything, so no scenario before it can be ' +
+      'reached',
     'no condition: <Body> is covered by <Header>']);
 
 const layered = new Component('Main', [
@@ -126,6 +135,63 @@ const layered = new Component('Main', [
 check('a layer is named by the scenario it covers and its order',
   said(validate(layered)),
   ['default, layer 1: a gap 40x100 at 100,0, beside <Left>']);
+
+// A scenario is chosen by reading right to left and taking the first that
+// matches, so one carrying no condition leaves everything before it dead.
+const shadowed = new Component('Main', [
+  new Layout('', '', [box('A', 0, 0, 100, 100)], []),
+  new Layout('any < modified', '', [box('B', 0, 0, 100, 100)], []),
+  new Layout('', '', [box('C', 0, 0, 100, 100)], [])]);
+check('a scenario with no condition shadows every one before it',
+  said(validate(shadowed)), ['no condition: matches everything, so no ' +
+    'scenario before it can be reached']);
+
+// The blank waiting past the last scenario carries no condition either, but
+// nothing has been drawn in it and it is dropped when the file is written.
+const waiting = new Component('Main', [
+  new Layout('', '', [box('A', 0, 0, 100, 100)], []),
+  new Layout('', '', [], [])]);
+check('the blank waiting past the last scenario is not one of them',
+  said(validate(waiting)), []);
+
+const repeated = new Component('Main', [
+  new Layout('', '', [box('A', 0, 0, 100, 100)], []),
+  new Layout('any < modified', '', [box('B', 0, 0, 100, 100)], []),
+  new Layout('any < modified', '', [box('C', 0, 0, 100, 100)], [])]);
+check('a condition used twice leaves the earlier scenario unreachable',
+  said(validate(repeated)), ['any < modified: repeats a condition, so the ' +
+    'earlier scenario cannot be reached']);
+
+// A box repeats whatever is drawn on the edge its copies run from, so
+// something has to be there and it has to span the box.
+check('a repeat attached to what it repeats is sound',
+  said(validate(sectionOf([box('Item', 0, 0, 150, 26),
+    repeating(0, 26, 150, 26, RepeatDirection.DOWN)]))), []);
+check('and so is one attached to a row of cells spanning it together',
+  said(validate(sectionOf([box('Head', 0, 0, 80, 26),
+    box('Tail', 80, 0, 70, 26),
+    repeating(0, 26, 150, 26, RepeatDirection.DOWN)]))), []);
+
+const nowhere = validate(sectionOf([box('Item', 0, 0, 150, 26),
+  repeating(0, 26, 150, 26, RepeatDirection.RIGHT)]));
+check('a repeat running from an edge with nothing on it is an error',
+  said(nowhere), ['default: space repeats right with nothing on its left ' +
+    'to repeat']);
+check('reported against the box that repeats',
+  nowhere[0].severity, Severity.ERROR);
+
+check('a repeat wider than what it repeats is an error',
+  said(validate(sectionOf([box('Item', 0, 0, 100, 26),
+    repeating(0, 26, 150, 26, RepeatDirection.DOWN)]))), [
+    'default: a gap 50x26 at 100,0, beside space',
+    'default: space repeats down but what is on its top does not span it']);
+
+const adrift = validate(sectionOf([box('Item', 0, 0, 150, 26),
+  repeating(0, 26, 150, 26, null)]));
+check('a repeat that does not say which way it runs is a warning',
+  said(adrift), ['default: space repeats without saying which way it runs']);
+check('and only a warning, the drawing being unfinished rather than wrong',
+  adrift[0].severity, Severity.WARNING);
 
 // A problem says which canvas it was found in, so that the outline can mark
 // the row holding it rather than hunt for it.
