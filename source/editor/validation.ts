@@ -1,4 +1,4 @@
-import { Box, Component, Layout } from '../layout';
+import { Board, Box, Component, Layout } from '../layout';
 
 /** How much a problem matters. */
 export enum Severity {
@@ -19,8 +19,24 @@ export interface Problem {
   /** What is wrong, naming where in the section it was found. */
   message: string;
 
+  /** The canvas it was found in. */
+  frame: Box[];
+
   /** The box to select to see it, null when no one box stands for it. */
   box: Box;
+}
+
+/** Returns what is amiss in each section of a board, by section, so that a
+    section can be marked without being visited. */
+export function validateBoard(board: Board): Map<Component, Problem[]> {
+  const found = new Map<Component, Problem[]>();
+  if(board === null) {
+    return found;
+  }
+  for(const component of board.components) {
+    found.set(component, validate(component));
+  }
+  return found;
 }
 
 /** Returns everything amiss in a section, in the order it is drawn. */
@@ -61,6 +77,7 @@ function findOverlaps(boxes: Box[], caption: string,
         severity: Severity.ERROR,
         message: `${caption}: ${nameOf(boxes[under])} is covered by ` +
           `${nameOf(boxes[over])}`,
+        frame: boxes,
         box: boxes[under]
       });
     }
@@ -174,11 +191,17 @@ function gapOf(region: number[][], columns: number[], rows: number[],
   const where = `${caption}: a gap ${right - left}x${bottom - top} at ` +
     `${left},${top}`;
   if(beside === null) {
-    return {severity: Severity.ERROR, message: where, box: null};
+    return {
+      severity: Severity.ERROR,
+      message: where,
+      frame: boxes,
+      box: null
+    };
   }
   return {
     severity: Severity.ERROR,
     message: `${where}, beside ${nameOf(beside)}`,
+    frame: boxes,
     box: beside
   };
 }

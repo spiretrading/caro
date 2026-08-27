@@ -364,5 +364,12 @@ space they span would answer only whether a gap exists, could never say
 where, and would call a layout whole whenever a gap and an overlap happened
 to cancel out.
 
+The outline marks what is amiss in red: the section, the scenario or layer
+within it, and the box itself, so that a section can be seen to be wrong
+while it is folded away or while another is being edited, and opening it
+leads down to the box. Every section is read for this, which the whole set
+of specifications does faster than a render. A box that is selected keeps
+the marking for that instead, being already named in the panel below.
+
 Still missing: every check beyond boxes covering one another and the space
 between them.

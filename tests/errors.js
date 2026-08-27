@@ -142,8 +142,20 @@ async function main() {
       const rows = Array.from(panel.querySelectorAll('[data-problem]'));
       return {
         summary: panel.firstElementChild.textContent.trim(),
+        tone: getComputedStyle(panel.firstElementChild).color,
         rows: rows.map(row => row.textContent.trim())
       };
+    };
+    window.__outline = () => {
+      const panel = document.querySelector('[data-outline]');
+      return Array.from(
+        panel.querySelectorAll('div > button:nth-child(2)')).map(b => {
+          const pad = parseInt(b.parentElement.style.paddingLeft) / 12;
+          return {
+            label: '..'.repeat(pad) + b.textContent.trim(),
+            amiss: getComputedStyle(b).color === 'rgb(178, 34, 34)'
+          };
+        });
     };
     window.__row = index => {
       const row = document.querySelectorAll('[data-problem]')[index];
@@ -180,8 +192,9 @@ async function main() {
   await send('Page.navigate', {url: 'http://localhost:8080/'});
   await pause(1800);
 
-  check('a new specification is valid',
-    (await evaluate(`window.__panel()`)).summary, 'Layout valid.');
+  const fresh = await evaluate(`window.__panel()`);
+  check('a new specification is valid', fresh.summary, 'Layout valid.');
+  check('and says so in green', fresh.tone, 'rgb(0, 134, 32)');
 
   await evaluate(`window.__click('Open')`);
   await pause(900);
@@ -190,6 +203,17 @@ async function main() {
   check('a box drawn over another is reported', opened.rows,
     ['default: <Body> is covered by <Header>']);
   check('and counted', opened.summary, '1 error');
+  check('which is not said in green', opened.tone !== 'rgb(0, 134, 32)',
+    true);
+
+  const outline = await evaluate(`window.__outline()`);
+  console.log('     ' + outline.map(row => row.label).join(' | '));
+  check('the outline marks what is amiss, section included',
+    outline.filter(row => row.amiss).map(row => row.label),
+    ['Main', '..default', '....<Body>', 'Gapped']);
+  check('and leaves the rest alone',
+    outline.filter(row => !row.amiss).map(row => row.label).
+      indexOf('Clean') !== -1, true);
 
   const where = await evaluate(`window.__where()`);
   console.log(`     ${JSON.stringify(where)}`);
@@ -217,8 +241,10 @@ async function main() {
 
   await evaluate(`window.__section('Clean')`);
   await pause(700);
-  check('a section with nothing amiss says so',
-    await evaluate(`window.__panel()`), {summary: 'Layout valid.', rows: []});
+  const clean = await evaluate(`window.__panel()`);
+  check('a section with nothing amiss says so in green',
+    [clean.summary, clean.tone, clean.rows],
+    ['Layout valid.', 'rgb(0, 134, 32)', []]);
 
   console.log(failures === 0 ? '\nthe error panel reports what is amiss' :
     `\n${failures} FAILURES`);

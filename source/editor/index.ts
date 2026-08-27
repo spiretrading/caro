@@ -13,4 +13,5 @@ export { ScenarioBoard } from './scenario_board';
 export { SectionPicker } from './section_picker';
 export { ensureBlank, isBlank, makeBlank, prune } from './scenarios';
 export { keepsSelection } from './selection';
-export { Problem, Severity, validate } from './validation';
+export { Problem, Severity, validate,
+  validateBoard } from './validation';

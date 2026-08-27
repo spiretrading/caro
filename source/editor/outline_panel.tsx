@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { Box, Component, Layout } from '../layout';
-import { POLICY_EDGE, REPEAT_DIRECTION } from './palette';
+import { POLICY_EDGE, PROBLEM_COLOR, REPEAT_DIRECTION } from './palette';
 import { REPEAT_GLYPH } from './repeat';
 import { isBlank } from './scenarios';
+import { Problem } from './validation';
 
 /** How far each level of the tree is indented, in pixels. */
 const INDENT = 12;
@@ -72,6 +73,10 @@ interface Properties {
 
   /** The boxes currently selected, empty when none are. */
   selection: Box[];
+
+  /** What is amiss in each section, so that a section can be marked
+      without being visited. */
+  problems: Map<Component, Problem[]>;
 
   /** Called to make a section the one being edited. */
   onSection?: (component: Component) => void;
@@ -166,7 +171,8 @@ export class OutlinePanel extends React.Component<Properties, State> {
         note: `${scenarios.length}`,
         leaf: scenarios.length === 0,
         open,
-        style: this.editingStyle(component),
+        style: {...this.amissStyle(this.sectionAmiss(component)),
+          ...this.editingStyle(component)},
         visit: () => this.props.onSection?.(component),
         choose: () => {
           const here = component === this.props.component;
@@ -199,7 +205,9 @@ export class OutlinePanel extends React.Component<Properties, State> {
       note: `${layout.boxes.length}`,
       leaf: layout.boxes.length === 0 && layout.overlays.length === 0,
       open,
-      style: this.markFor(layout.boxes),
+      style: {...this.amissStyle(
+          this.frameAmiss(component, layout.boxes)),
+        ...this.markFor(layout.boxes)},
       visit: () => this.props.onActivate?.(component, layout.boxes),
       choose: () => {
         const here = component === this.props.component;
@@ -228,7 +236,8 @@ export class OutlinePanel extends React.Component<Properties, State> {
         note: `${overlay.length}`,
         leaf: overlay.length === 0,
         open: shown,
-        style: this.markFor(overlay),
+        style: {...this.amissStyle(this.frameAmiss(component, overlay)),
+          ...this.markFor(overlay)},
         visit: () => this.props.onActivate?.(component, overlay),
         choose: () => {
           const here = component === this.props.component;
@@ -260,12 +269,13 @@ export class OutlinePanel extends React.Component<Properties, State> {
       note: OutlinePanel.sizeOf(box, chosen),
       leaf: true,
       open: false,
-      style: (() => {
-        if(!chosen) {
-          return {};
-        }
-        return OutlinePanel.STYLE.chosen;
-      })(),
+      style: {...this.amissStyle(this.boxAmiss(component, box)),
+        ...(() => {
+          if(!chosen) {
+            return {};
+          }
+          return OutlinePanel.STYLE.chosen;
+        })()},
       visit,
       choose: visit
     });
@@ -428,6 +438,40 @@ export class OutlinePanel extends React.Component<Properties, State> {
     this.setState({open});
   }
 
+  /** Returns the marking that says something in a row is amiss. A row that
+      is selected keeps the marking for that instead, since a box being
+      looked at is named in the error panel anyway. */
+  private amissStyle(amiss: boolean) {
+    if(!amiss) {
+      return {};
+    }
+    return OutlinePanel.STYLE.amiss;
+  }
+
+  /** Returns whether anything at all is amiss in a section. */
+  private sectionAmiss(component: Component): boolean {
+    return this.faults(component).length !== 0;
+  }
+
+  /** Returns whether anything is amiss within one canvas. */
+  private frameAmiss(component: Component, frame: Box[]): boolean {
+    return this.faults(component).some(problem => problem.frame === frame);
+  }
+
+  /** Returns whether a box is the one a problem points at. */
+  private boxAmiss(component: Component, box: Box): boolean {
+    return this.faults(component).some(problem => problem.box === box);
+  }
+
+  /** Returns what is amiss in a section. */
+  private faults(component: Component): Problem[] {
+    const found = this.props.problems.get(component);
+    if(found === undefined) {
+      return [];
+    }
+    return found;
+  }
+
   /** Returns the marking that says a canvas is the one being worked in. */
   private markFor(boxes: Box[]) {
     if(boxes !== this.props.active) {
@@ -558,6 +602,9 @@ export class OutlinePanel extends React.Component<Properties, State> {
       alignItems: 'center',
       gap: '2px',
       paddingRight: '8px'
+    },
+    amiss: {
+      color: PROBLEM_COLOR
     },
     editing: {
       fontWeight: 700

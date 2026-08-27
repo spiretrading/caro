@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Box } from '../layout';
+import { PROBLEM_COLOR, VALID_COLOR, WARNING_COLOR } from './palette';
 import { Problem, Severity } from './validation';
 
 interface Properties {
@@ -18,7 +19,9 @@ export class ErrorPanel extends React.Component<Properties> {
     return (
       <div style={ErrorPanel.STYLE.panel} data-keeps-selection=''
           data-errors=''>
-        <div style={ErrorPanel.STYLE.heading}>{this.summary()}</div>
+        <div style={{...ErrorPanel.STYLE.heading, ...this.toneOf()}}>
+          {this.summary()}
+        </div>
         <div style={ErrorPanel.STYLE.list}>
           {this.props.problems.map(this.renderProblem)}
         </div>
@@ -35,6 +38,13 @@ export class ErrorPanel extends React.Component<Properties> {
           onClick={() => this.props.onSelect?.(problem.box)}>
         {problem.message}
       </button>);
+  }
+
+  private toneOf() {
+    if(this.props.problems.length === 0) {
+      return ErrorPanel.STYLE.valid;
+    }
+    return {};
   }
 
   private summary(): string {
@@ -102,11 +112,14 @@ export class ErrorPanel extends React.Component<Properties> {
       textAlign: 'left' as 'left',
       cursor: 'pointer'
     },
+    valid: {
+      color: VALID_COLOR
+    },
     error: {
-      color: '#B22222'
+      color: PROBLEM_COLOR
     },
     warning: {
-      color: '#8A6D00'
+      color: WARNING_COLOR
     }
   };
 }

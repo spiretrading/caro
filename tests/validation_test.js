@@ -1,6 +1,8 @@
 // Checks what the error panel is told about a section.
-const {Box, Component, Layout, SizePolicy} = require('./cjs/layout/index.js');
-const {Severity, validate} = require('./cjs/editor/validation.js');
+const {Board, Box, Component, Layout,
+  SizePolicy} = require('./cjs/layout/index.js');
+const {Severity, validate,
+  validateBoard} = require('./cjs/editor/validation.js');
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -125,7 +127,26 @@ check('a layer is named by the scenario it covers and its order',
   said(validate(layered)),
   ['default, layer 1: a gap 40x100 at 100,0, beside <Left>']);
 
+// A problem says which canvas it was found in, so that the outline can mark
+// the row holding it rather than hunt for it.
+const framed = sectionOf(
+  [box('Left', 0, 0, 100, 100), box('Right', 140, 0, 100, 100)]);
+check('a problem names the canvas it was found in',
+  validate(framed)[0].frame === framed.layouts[0].boxes, true);
+
+// Every section of a board is read, so that one can be marked in the
+// outline without being opened.
+const whole = sectionOf(
+  [box('Left', 0, 0, 100, 100), box('Right', 100, 0, 100, 100)]);
+const board = new Board('Spec', [framed, whole, new Component('Empty', [])]);
+const bySection = validateBoard(board);
+check('every section of a board is read',
+  board.components.map(component => said(bySection.get(component))),
+  [['default: a gap 40x100 at 100,0, beside <Left>'], [], []]);
+
 check('a section that is not there says nothing', validate(null), []);
+check('and neither does a board that is not there',
+  validateBoard(null).size, 0);
 
 console.log(failures === 0 ? '\nthe section is read for what is amiss' :
   `\n${failures} FAILURES`);

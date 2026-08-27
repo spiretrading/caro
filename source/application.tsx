@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Clipboard, copyBoxes, copyOf, copyScenario, ensureBlank,
   ErrorPanel, History, keepsSelection, makeBlank, NodeProperties,
   OutlinePanel, prune, push, restoreSnapshot, Reveal, ScenarioBoard,
-  SectionPicker, Snapshot, takeSnapshot, validate } from './editor';
+  SectionPicker, Snapshot, takeSnapshot, validateBoard } from './editor';
 import { Board, Box, Component, Layout } from './layout';
 import { importFlatBoard, isFlatBoard } from './migration';
 import { SpecificationFile } from './storage';
@@ -50,19 +50,21 @@ export class Application extends React.Component<{}, State> {
           Use Chrome or Edge, served over localhost or https.
         </div>);
     }
+    const problems = validateBoard(this.state.board);
     return (
       <div style={Application.STYLE.container}>
         {this.state.component !== null &&
           <OutlinePanel sections={this.state.board.components}
             component={this.state.component} active={this.state.active}
-            selection={this.state.selection}
+            selection={this.state.selection} problems={problems}
             onSection={this.onSelectSection} onActivate={this.onActivate}
             onReveal={this.onReveal}/>}
         <div style={Application.STYLE.content}>
           {this.renderToolbar()}
           {this.renderBody()}
           {this.state.component !== null &&
-            <ErrorPanel problems={validate(this.state.component)}
+            <ErrorPanel
+              problems={problems.get(this.state.component) ?? []}
               onSelect={this.onSelectProblem}/>}
         </div>
         {this.state.component !== null &&
