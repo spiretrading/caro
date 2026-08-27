@@ -387,5 +387,13 @@ may span it between them, a repeated row being made of cells. A box that
 repeats without saying which way it runs is a warning rather than an error,
 the drawing being unfinished rather than wrong.
 
+Three further checks guard states no drawing arrives with, each of them a
+rename or a press away in the editor: a section with no name, which nothing
+can name; two sections called the same, which a box naming one cannot tell
+apart; and a layer with nothing drawn in it, which is written out and draws
+nothing. None of them fires anywhere in the specifications as they stand,
+which is the point of having them. A problem about the section itself names
+no box and no canvas, so it is read rather than pressed.
+
 Still missing: a condition is free text and nothing reads it, so nothing
 can say whether the state it names is declared.

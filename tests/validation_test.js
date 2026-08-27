@@ -204,11 +204,46 @@ check('a problem names the canvas it was found in',
 // outline without being opened.
 const whole = sectionOf(
   [box('Left', 0, 0, 100, 100), box('Right', 100, 0, 100, 100)]);
-const board = new Board('Spec', [framed, whole, new Component('Empty', [])]);
-const bySection = validateBoard(board);
+const spread = new Board('Spec', [framed,
+  new Component('Other', whole.layouts), new Component('Empty', [])]);
+const bySection = validateBoard(spread);
 check('every section of a board is read',
-  board.components.map(component => said(bySection.get(component))),
+  spread.components.map(component => said(bySection.get(component))),
   [['default: a gap 40x100 at 100,0, beside <Left>'], [], []]);
+
+// None of these is anything a drawing arrives with; each is a rename or a
+// press away in the editor, and would be saved as it stands.
+const nameless = new Component('', [new Layout('', '', [], [])]);
+const twinned = new Component('Div:Body', [new Layout('', '', [], [])]);
+const alike = new Component('Div:Body', [new Layout('', '', [], [])]);
+const named = new Component('Main', [new Layout('', '', [], [])]);
+const board = new Board('Spec', [named, nameless, twinned, alike,
+  new Component('Div:', [new Layout('', '', [], [])])]);
+const byName = validateBoard(board);
+check('a section with no name can be named by nothing',
+  said(byName.get(nameless)),
+  ['The section has no name, so nothing can name it']);
+check('and neither can one whose name is only its element',
+  said(byName.get(board.components[4])),
+  ['The section has no name, so nothing can name it']);
+check('two sections called the same cannot be told apart',
+  [said(byName.get(twinned)), said(byName.get(alike))],
+  [['Another section is called Div:Body too, so a box naming it cannot ' +
+    'say which'],
+   ['Another section is called Div:Body too, so a box naming it cannot ' +
+    'say which']]);
+check('a section named once and named at all says nothing',
+  said(byName.get(named)), []);
+check('a section is not read for this on its own, only against a board',
+  said(validate(nameless)), []);
+
+const bare = new Component('Main', [
+  new Layout('', '', [box('A', 0, 0, 100, 100)], [[]])]);
+const empty = validate(bare);
+check('a layer with nothing drawn in it is a warning',
+  said(empty), ['default, layer 1: nothing has been drawn in it']);
+check('and only a warning, an empty layer drawing nothing either way',
+  empty[0].severity, Severity.WARNING);
 
 check('a section that is not there says nothing', validate(null), []);
 check('and neither does a board that is not there',

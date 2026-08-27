@@ -473,7 +473,9 @@ export class Application extends React.Component<{}, State> {
       this.onReveal(this.state.component, problem.box);
       return;
     }
-    this.onActivate(this.state.component, problem.frame);
+    if(problem.frame !== null) {
+      this.onActivate(this.state.component, problem.frame);
+    }
   }
 
   private onCopy = (event: KeyboardEvent) => {

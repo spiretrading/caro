@@ -31,7 +31,9 @@ export class ErrorPanel extends React.Component<Properties> {
     return (
       <button key={index} data-problem=''
           style={{...ErrorPanel.STYLE.row,
-            ...ErrorPanel.markFor(problem.severity)}}
+            ...ErrorPanel.markFor(problem.severity),
+            ...ErrorPanel.reachFor(problem)}}
+          disabled={problem.box === null && problem.frame === null}
           title='Show it on the canvas'
           onClick={() => this.props.onSelect?.(problem)}>
         {problem.message}
@@ -67,6 +69,13 @@ export class ErrorPanel extends React.Component<Properties> {
       return `1 ${what}`;
     }
     return `${many} ${what}s`;
+  }
+
+  private static reachFor(problem: Problem) {
+    if(problem.box !== null || problem.frame !== null) {
+      return {};
+    }
+    return ErrorPanel.STYLE.said;
   }
 
   private static markFor(severity: Severity) {
@@ -109,6 +118,9 @@ export class ErrorPanel extends React.Component<Properties> {
       fontSize: '12px',
       textAlign: 'left' as 'left',
       cursor: 'pointer'
+    },
+    said: {
+      cursor: 'default' as 'default'
     },
     valid: {
       color: VALID_COLOR

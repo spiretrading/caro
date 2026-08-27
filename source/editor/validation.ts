@@ -38,7 +38,38 @@ export function validateBoard(board: Board): Map<Component, Problem[]> {
   for(const component of board.components) {
     found.set(component, validate(component));
   }
+  findNameFaults(board, found);
   return found;
+}
+
+/** Reports a section that cannot be told from another, or told at all. A box
+    names the section it stands for, so a section with no name can be named
+    by nothing, and two sharing a name cannot be told apart. Neither is
+    anything a drawing arrives with; both are a rename away in the editor. */
+function findNameFaults(board: Board,
+    found: Map<Component, Problem[]>): void {
+  const times = new Map<string, number>();
+  for(const component of board.components) {
+    times.set(component.name, (times.get(component.name) ?? 0) + 1);
+  }
+  for(const component of board.components) {
+    if(component.identifier.trim() === '') {
+      found.get(component).push({
+        severity: Severity.ERROR,
+        message: 'The section has no name, so nothing can name it',
+        frame: null,
+        box: null
+      });
+    } else if(times.get(component.name) !== 1) {
+      found.get(component).push({
+        severity: Severity.ERROR,
+        message: `Another section is called ${component.name} too, so a ` +
+          'box naming it cannot say which',
+        frame: null,
+        box: null
+      });
+    }
+  }
 }
 
 /** Returns everything amiss in a section, in the order it is drawn. */
@@ -53,8 +84,17 @@ export function validate(component: Component): Problem[] {
     findUnreachable(component, layout, index, caption, problems);
     findFaults(layout.boxes, caption, problems);
     for(let order = 0; order !== layout.overlays.length; ++order) {
-      findFaults(layout.overlays[order], `${caption}, layer ${order + 1}`,
-        problems);
+      const layer = layout.overlays[order];
+      const where = `${caption}, layer ${order + 1}`;
+      if(layer.length === 0) {
+        problems.push({
+          severity: Severity.WARNING,
+          message: `${where}: nothing has been drawn in it`,
+          frame: layer,
+          box: null
+        });
+      }
+      findFaults(layer, where, problems);
     }
   }
   return problems;
