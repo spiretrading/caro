@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { Box, SizePolicy } from '../layout';
+import { Box, RepeatDirection, SizePolicy } from '../layout';
 import { boxAt, extentOf } from './arrange';
-import { POLICY_COLOR, POLICY_EDGE, POLICY_INK } from './palette';
+import { POLICY_COLOR, POLICY_EDGE, POLICY_INK,
+  REPEAT_DIRECTION } from './palette';
+import { REPEAT_GLYPH, runsFrom } from './repeat';
 
 /** The distance a press must cover before it draws or drags, in pixels of
     screen. */
@@ -38,6 +40,12 @@ const GLYPH_SIZE = 13;
 
 /** How large the name inside a box is drawn. */
 const LABEL_SIZE = 12;
+
+/** How large the arrow marking which way a box repeats is drawn. */
+const REPEAT_SIZE = 15;
+
+/** How far that arrow sits inside the edge it marks. */
+const REPEAT_INSET = 4;
 
 /** How large the prompt on an empty canvas is drawn. */
 const HINT_SIZE = 13;
@@ -273,8 +281,25 @@ export class LayoutCanvas extends React.Component<Properties, State> {
           <span style={{...LayoutCanvas.STYLE.label,
             ...LayoutCanvas.inkFor(box),
             fontSize: `${this.local(LABEL_SIZE)}px`}}>{label}</span>}
+        {this.renderRepeat(box)}
         {this.renderDelete(box)}
       </div>);
+  }
+
+  /** Marks which way a repeating box repeats with an arrow on the edge it
+      runs from, the direction being nothing the box's own shape can say. */
+  private renderRepeat(box: Box): JSX.Element {
+    if(box.repeatDirection === null) {
+      return null;
+    }
+    return (
+      <span style={{...LayoutCanvas.STYLE.repeat,
+          ...LayoutCanvas.placeFor(box.repeatDirection,
+            this.local(REPEAT_INSET)),
+          fontSize: `${this.local(REPEAT_SIZE)}px`}}
+          title={`Repeats ${box.repeatDirection}`}>
+        {REPEAT_GLYPH[box.repeatDirection]}
+      </span>);
   }
 
   private renderDelete(box: Box): JSX.Element {
@@ -768,23 +793,31 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       left.top === right.top && left.bottom === right.bottom;
   }
 
+  /** Returns the colour an edge is drawn in: the darker shade of its policy
+      where it meets that policy's own fill, save on a repeat, which is left
+      pale so that the edge it runs from is the only strong mark on it. */
+  private static edgeFor(policy: SizePolicy, same: boolean) {
+    if(same && policy !== SizePolicy.REPEAT) {
+      return POLICY_EDGE[policy];
+    }
+    return POLICY_COLOR[policy];
+  }
+
+  /** Returns the painting a box carries: a policy colour along each edge,
+      the strong purple along the edge a repeat runs from, and a fill where
+      both policies agree. */
   private static paintFor(box: Box, marked: boolean) {
     const same = box.widthPolicy === box.heightPolicy;
-    const across = (() => {
-      if(same) {
-        return POLICY_EDGE[box.widthPolicy];
-      }
-      return POLICY_COLOR[box.widthPolicy];
-    })();
-    const down = (() => {
-      if(same) {
-        return POLICY_EDGE[box.heightPolicy];
-      }
-      return POLICY_COLOR[box.heightPolicy];
-    })();
-    const boxShadow = `inset ${EDGE}px 0 0 0 ${across}, ` +
-      `inset -${EDGE}px 0 0 0 ${across}, inset 0 ${EDGE}px 0 0 ${down}, ` +
-      `inset 0 -${EDGE}px 0 0 ${down}`;
+    const across = LayoutCanvas.edgeFor(box.widthPolicy, same);
+    const down = LayoutCanvas.edgeFor(box.heightPolicy, same);
+    const edges = {left: across, right: across, top: down, bottom: down};
+    if(box.repeatDirection !== null) {
+      edges[runsFrom(box.repeatDirection)] = REPEAT_DIRECTION;
+    }
+    const boxShadow = `inset ${EDGE}px 0 0 0 ${edges.left}, ` +
+      `inset -${EDGE}px 0 0 0 ${edges.right}, ` +
+      `inset 0 ${EDGE}px 0 0 ${edges.top}, ` +
+      `inset 0 -${EDGE}px 0 0 ${edges.bottom}`;
     const ring = (() => {
       if(!marked) {
         return boxShadow;
@@ -796,6 +829,23 @@ export class LayoutCanvas extends React.Component<Properties, State> {
     }
     return {boxShadow: ring,
       backgroundColor: POLICY_COLOR[box.widthPolicy]};
+  }
+
+  /** Returns where the repeat arrow sits, which is centred on the edge the
+      copies run towards, opposite the edge that is marked. */
+  private static placeFor(direction: RepeatDirection, inset: number) {
+    if(direction === RepeatDirection.LEFT) {
+      return {left: `${inset}px`, top: 0, bottom: 0, alignItems: 'center'};
+    }
+    if(direction === RepeatDirection.RIGHT) {
+      return {right: `${inset}px`, top: 0, bottom: 0, alignItems: 'center'};
+    }
+    if(direction === RepeatDirection.UP) {
+      return {top: `${inset}px`, left: 0, right: 0,
+        justifyContent: 'center'};
+    }
+    return {bottom: `${inset}px`, left: 0, right: 0,
+      justifyContent: 'center'};
   }
 
   private static inkFor(box: Box) {
@@ -851,6 +901,14 @@ export class LayoutCanvas extends React.Component<Properties, State> {
       backgroundColor: '#684BC7',
       color: '#FFFFFF',
       cursor: 'pointer'
+    },
+    repeat: {
+      position: 'absolute' as 'absolute',
+      display: 'flex',
+      color: REPEAT_DIRECTION,
+      fontWeight: 700,
+      lineHeight: 1,
+      pointerEvents: 'none' as 'none'
     },
     label: {
       fontWeight: 700,

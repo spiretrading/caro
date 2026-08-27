@@ -1,5 +1,8 @@
 import * as React from 'react';
-import { Box, SizePolicy } from '../layout';
+import { Box, RepeatDirection, SizePolicy } from '../layout';
+import { POLICY_COLOR, POLICY_EDGE, REPEAT_DIRECTION } from './palette';
+import { directionsFor, REPEAT_GLYPH, repeats, setHeightPolicy,
+  setWidthPolicy } from './repeat';
 
 interface Properties {
 
@@ -46,6 +49,7 @@ export class NodeProperties extends React.Component<Properties> {
           this.onWidthPolicy, this.onWidth)}
         {this.renderAxis('Height', node.heightPolicy, node.height,
           this.onHeightPolicy, this.onHeight)}
+        {this.renderDirection(node)}
         <button style={NodeProperties.STYLE.remove}
             onClick={() => this.props.onRemove?.()}>
           Delete
@@ -63,10 +67,42 @@ export class NodeProperties extends React.Component<Properties> {
           {this.renderChoice('Fixed', SizePolicy.FIXED, policy, onPolicy)}
           {this.renderChoice('Fill', SizePolicy.FILL, policy, onPolicy)}
           {this.renderChoice('Fit', SizePolicy.FIT, policy, onPolicy)}
+          {this.renderChoice('Repeat', SizePolicy.REPEAT, policy, onPolicy)}
         </div>
         <input style={NodeProperties.STYLE.input} type='number' min='0'
           value={size} onChange={onSize}/>
       </div>);
+  }
+
+  /** Shows which way a repeating box repeats, offering only the directions
+      the axes it repeats along allow. */
+  private renderDirection(node: Box) {
+    if(!repeats(node)) {
+      return null;
+    }
+    return (
+      <div style={NodeProperties.STYLE.field} data-repeat=''>
+        <span style={NodeProperties.STYLE.caption}>Repeats</span>
+        <div style={NodeProperties.STYLE.arrows}>
+          {directionsFor(node).map(direction =>
+            this.renderArrow(direction, node.repeatDirection))}
+        </div>
+      </div>);
+  }
+
+  private renderArrow(direction: RepeatDirection, chosen: RepeatDirection) {
+    const style = (() => {
+      if(direction === chosen) {
+        return {...NodeProperties.STYLE.arrow, ...NodeProperties.STYLE.chosen,
+          borderColor: REPEAT_DIRECTION};
+      }
+      return NodeProperties.STYLE.arrow;
+    })();
+    return (
+      <button key={direction} style={style} title={direction}
+          onClick={() => this.onDirection(direction)}>
+        {REPEAT_GLYPH[direction]}
+      </button>);
   }
 
   private renderChoice(caption: string, value: SizePolicy,
@@ -75,14 +111,14 @@ export class NodeProperties extends React.Component<Properties> {
       if(value === policy) {
         return {...NodeProperties.STYLE.choice,
           ...NodeProperties.STYLE.chosen,
-          borderColor: NodeProperties.POLICY_COLOR[value]};
+          borderColor: POLICY_EDGE[value]};
       }
       return NodeProperties.STYLE.choice;
     })();
     return (
       <button style={style} onClick={() => onPolicy(value)}>
         <span style={{...NodeProperties.STYLE.swatch,
-          backgroundColor: NodeProperties.POLICY_COLOR[value]}}/>
+          backgroundColor: POLICY_COLOR[value]}}/>
         {caption}
       </button>);
   }
@@ -93,12 +129,22 @@ export class NodeProperties extends React.Component<Properties> {
   }
 
   private onWidthPolicy = (policy: SizePolicy) => {
-    this.props.selection[0].widthPolicy = policy;
+    setWidthPolicy(this.props.selection[0], policy);
     this.props.onChange?.();
   }
 
   private onHeightPolicy = (policy: SizePolicy) => {
-    this.props.selection[0].heightPolicy = policy;
+    setHeightPolicy(this.props.selection[0], policy);
+    this.props.onChange?.();
+  }
+
+  private onDirection = (direction: RepeatDirection) => {
+    const node = this.props.selection[0];
+    if(node.repeatDirection === direction) {
+      node.repeatDirection = null;
+    } else {
+      node.repeatDirection = direction;
+    }
     this.props.onChange?.();
   }
 
@@ -111,13 +157,6 @@ export class NodeProperties extends React.Component<Properties> {
     this.props.selection[0].height = Number(event.target.value);
     this.props.onChange?.();
   }
-
-  private static readonly POLICY_COLOR = {
-    [SizePolicy.FIXED]: '#FFB800',
-    [SizePolicy.FILL]: '#0066FF',
-    [SizePolicy.FIT]: '#00BF2D',
-    [SizePolicy.REPEAT]: '#744BFF'
-  } as {[policy: string]: string};
 
   private static readonly STYLE = {
     panel: {
@@ -158,6 +197,19 @@ export class NodeProperties extends React.Component<Properties> {
       display: 'flex',
       flexDirection: 'column' as 'column',
       gap: '4px'
+    },
+    arrows: {
+      display: 'flex',
+      gap: '4px'
+    },
+    arrow: {
+      flexGrow: 1,
+      padding: '6px 0',
+      fontSize: '14px',
+      lineHeight: '14px',
+      cursor: 'pointer',
+      border: '2px solid #E6E6E6',
+      backgroundColor: '#FFFFFF'
     },
     choice: {
       display: 'flex',

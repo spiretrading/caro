@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Box, Component, Layout } from '../layout';
-import { POLICY_EDGE } from './palette';
+import { POLICY_EDGE, REPEAT_DIRECTION } from './palette';
+import { REPEAT_GLYPH } from './repeat';
 import { isBlank } from './scenarios';
 
 /** How far each level of the tree is indented, in pixels. */
@@ -449,8 +450,14 @@ export class OutlinePanel extends React.Component<Properties, State> {
       each colour is used, since the lighter one is what the box is painted
       and does not carry against a white page. */
   private static sizeOf(box: Box, chosen: boolean): React.ReactNode {
+    const arrow = (() => {
+      if(box.repeatDirection === null) {
+        return '';
+      }
+      return REPEAT_GLYPH[box.repeatDirection];
+    })();
     if(chosen) {
-      return `${box.width}x${box.height}`;
+      return `${box.width}x${box.height}${arrow}`;
     }
     return (
       <React.Fragment>
@@ -459,6 +466,8 @@ export class OutlinePanel extends React.Component<Properties, State> {
         <span style={{color: POLICY_EDGE[box.heightPolicy]}}>
           {box.height}
         </span>
+        {arrow !== '' &&
+          <span style={{color: REPEAT_DIRECTION}}>{arrow}</span>}
       </React.Fragment>);
   }
 

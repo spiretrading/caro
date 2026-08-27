@@ -6,8 +6,12 @@ export const POLICY_COLOR = {
   [SizePolicy.FIXED]: '#FFB800',
   [SizePolicy.FILL]: '#0066FF',
   [SizePolicy.FIT]: '#00BF2D',
-  [SizePolicy.REPEAT]: '#744BFF'
+  [SizePolicy.REPEAT]: '#D7CBFF'
 };
+
+/** The colour the direction a box repeats in is marked in, which the
+    specifications keep apart from the colour of the repeat itself. */
+export const REPEAT_DIRECTION = '#744BFF';
 
 /** The darker shade of each policy colour, used where a colour meets the
     white behind it: an edge against a fill, or a word against a page. */
@@ -23,5 +27,5 @@ export const POLICY_INK = {
   [SizePolicy.FIXED]: '#000000',
   [SizePolicy.FILL]: '#FFFFFF',
   [SizePolicy.FIT]: '#000000',
-  [SizePolicy.REPEAT]: '#FFFFFF'
+  [SizePolicy.REPEAT]: '#000000'
 };
