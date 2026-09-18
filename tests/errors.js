@@ -80,6 +80,22 @@ const SPEC = JSON.stringify({
       ]
     },
     {
+      name: 'Hollow',
+      layouts: [
+        {
+          condition: '',
+          properties: '',
+          boxes: [],
+          overlays: [
+            [
+              {name: 'Floating', x: 0, y: 0, width: 100, height: 100,
+                widthPolicy: 'fill', heightPolicy: 'fit'}
+            ]
+          ]
+        }
+      ]
+    },
+    {
       name: 'Clean',
       layouts: [
         {
@@ -255,7 +271,7 @@ async function main() {
   console.log('     ' + outline.map(row => row.label).join(' | '));
   check('the outline marks what is amiss, section included',
     outline.filter(row => row.amiss).map(row => row.label),
-    ['Main', '..default', '....<Body>', 'Gapped', 'Shadowed']);
+    ['Main', '..default', '....<Body>', 'Gapped', 'Shadowed', 'Hollow']);
   check('a section with only a warning is marked apart from an error',
     outline.filter(row => row.warned).map(row => row.label),
     ['Warned']);
@@ -307,6 +323,13 @@ async function main() {
   check('a repeat saying no direction is a warning', warned.rows,
     ['default: space repeats without saying which way it runs']);
   check('and counted as one', warned.summary, '1 warning');
+
+  await evaluate(`window.__section('Hollow')`);
+  await pause(700);
+  const hollow = await evaluate(`window.__panel()`);
+  check('an empty base with real content elsewhere is an error',
+    hollow.rows, ['default: nothing has been drawn in it']);
+  check('and counted', hollow.summary, '1 error');
 
   await evaluate(`window.__section('Clean')`);
   await pause(700);

@@ -131,7 +131,8 @@ check('a scenario is named by its condition, and the default by name',
     'no condition: <Body> is covered by <Header>']);
 
 const layered = new Component('Main', [
-  new Layout('', '', [], [[apart[0].clone(), apart[1].clone()]])]);
+  new Layout('', '', [box('Base', 0, 0, 100, 100)],
+    [[apart[0].clone(), apart[1].clone()]])]);
 check('a layer is named by the scenario it covers and its order',
   said(validate(layered)),
   ['default, layer 1: a gap 40x100 at 100,0, beside <Left>']);

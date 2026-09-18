@@ -82,6 +82,14 @@ export function validate(component: Component): Problem[] {
     const layout = component.layouts[index];
     const caption = captionOf(layout, index);
     findUnreachable(component, layout, index, caption, problems);
+    if(layout.boxes.length === 0 && !isBlank(layout)) {
+      problems.push({
+        severity: Severity.ERROR,
+        message: `${caption}: nothing has been drawn in it`,
+        frame: layout.boxes,
+        box: null
+      });
+    }
     findFaults(layout.boxes, caption, problems);
     for(let order = 0; order !== layout.overlays.length; ++order) {
       const layer = layout.overlays[order];
